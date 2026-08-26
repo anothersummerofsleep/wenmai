@@ -62,13 +62,33 @@ Condition C additionally accumulates **canonical state**, human-reviewed:
 source chapter + C's translation + existing C state
   -> extraction proposal (scripts/build_context.py)
   -> HUMAN review
-  -> accepted entries into state/context/*.yaml and state/translation_memory/phrases.jsonl
+  -> accepted entries (each tagged first_seen: chNNNN) into state/context/*.yaml and
+     state/translation_memory/phrases.jsonl
   -> used when translating the next chapter
 ```
 
 The harness accumulates C's translated history automatically; it does **not** auto-mutate canonical
 context or translation memory (V1 keeps that human-reviewed). This is what lets you watch whether
 C's advantage grows as more chapters, and more accumulated state, accrue.
+
+## Chapter-bounded knowledge (hard invariant)
+
+A fact learned in chapter N must never influence generation of any chapter `< N`, even after it
+becomes canonical context. The harness enforces this structurally on both channels that carry
+knowledge into a chapter's prompt:
+
+- **Rolling window**: only chapters strictly before the current one are ever included.
+- **Canonical context + translation memory**: when generating chapter *i*, any record whose
+  `first_seen` chapter is `>= i` is pruned (`context.load_context_records(..., max_chapter=i)`), so
+  a later-learned fact cannot leak backwards, even if you curated it into the store already, and
+  even if you re-generate an earlier chapter.
+
+For this guarantee to hold, **every curated context record and translation-memory entry must carry a
+`first_seen: chNNNN`** marking the chapter it was first learned. The extraction proposal fills this
+in; keep it when you accept an entry. An entry with no `first_seen` cannot be chapter-bounded and
+will be visible to all chapters, so do not omit it. (The source chapter itself is always in the
+prompt, so chapter *i* still sees everything its own source states; bounding only governs the
+*accumulated* store.)
 
 ## The reference translation is eval-only (hard rule)
 

@@ -153,6 +153,22 @@ def test_shared_c_mode_shares_c_history(bench):
     assert "MARKER-C-ch0002" in b3
 
 
+def test_generation_context_is_chapter_bounded(bench):
+    # A fact first learned in chapter 2 must never influence chapters < it (ch1, ch2 itself);
+    # it becomes available only from chapter 3 onward.
+    ctx = benchmark.local_root(bench) / "state" / "context" / "characters.yaml"
+    ctx.write_text("characters:\n  klein:\n    english: Klein\n    first_seen: ch0002\n",
+                   encoding="utf-8")
+    _add_source(bench, 3)
+    rec = MarkerBackend()
+    for ch in (1, 2, 3):
+        benchmark.generate_chapter(bench, ch, rec, run_id="r1", seed="s")
+
+    assert "Klein" not in _user_for(rec, bench, 1, "C")
+    assert "Klein" not in _user_for(rec, bench, 2, "C")
+    assert "Klein" in _user_for(rec, bench, 3, "C")
+
+
 def test_deterministic_scores_detect_banned_variant(bench):
     benchmark._use_state_novel(bench)  # point context at the state novel so avoid-lists load
     scores = benchmark.deterministic_scores("---\n---\n# C\n\nThe chi surged.")

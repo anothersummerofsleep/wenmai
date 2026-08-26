@@ -201,7 +201,10 @@ def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
         if flags["include_previous"]:
             window_cond = "C" if (mode == "shared_c" and cond in ("B", "C")) else cond
             prev = _read_history(run_dir, window_cond, chapter, prev_n, tgt)
-        user = context.assemble_translation_context(novel, chapter, prev_n, previous=prev, **flags)
+        # Chapter-bounded knowledge: canonical context/TM for chapter i excludes anything first
+        # seen at or after i, so a fact learned in a later chapter can never leak backwards.
+        user = context.assemble_translation_context(
+            novel, chapter, prev_n, previous=prev, context_max_chapter=chapter, **flags)
         tag = f"benchmark/{bid}/{run_id}/ch{chapter:04d}/{cond}"
         outputs[cond] = backend.complete(system, user, tag=tag).rstrip() + "\n"
 

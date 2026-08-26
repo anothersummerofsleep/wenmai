@@ -10,6 +10,8 @@ here is language-neutral; Chinese-specific guidance lives in prompts/languages/<
 """
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 
 import yaml
@@ -143,21 +145,86 @@ def context_files(novel: str) -> list[Path]:
     return sorted(present, key=sort_key)
 
 
-def load_context_records(novel: str) -> str:
-    """Concatenate the novel's context YAML files into one labelled block."""
+_DROP = object()  # sentinel: a node pruned by chapter-bounding
+
+
+def _first_seen_chapter(value) -> int | None:
+    """Chapter number from a `first_seen` value (`ch0007`, `7`, `"chapter 7"`), or None."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        m = re.search(r"\d+", value)
+        if m:
+            return int(m.group())
+    return None
+
+
+def _prune_future(node, max_chapter: int):
+    """Recursively drop any record whose `first_seen` chapter is >= max_chapter.
+
+    Generic and schema-agnostic (same philosophy as the drift checker's avoid-walk): any mapping
+    carrying a `first_seen` field is a record and is removed if it was first seen at or after
+    max_chapter. Category wrappers and untagged nodes are kept; their children are still filtered.
+    Returns _DROP if the whole node should be removed by its parent.
+    """
+    if isinstance(node, dict):
+        fs = _first_seen_chapter(node.get("first_seen"))
+        if fs is not None and fs >= max_chapter:
+            return _DROP
+        out = {}
+        for key, value in node.items():
+            pruned = _prune_future(value, max_chapter)
+            if pruned is not _DROP:
+                out[key] = pruned
+        return out
+    if isinstance(node, list):
+        return [p for item in node if (p := _prune_future(item, max_chapter)) is not _DROP]
+    return node
+
+
+def load_context_records(novel: str, *, max_chapter: int | None = None) -> str:
+    """Concatenate the novel's context YAML files into one labelled block.
+
+    When `max_chapter` is set (benchmark chapter-bounding), any record with `first_seen >=
+    max_chapter` is pruned, so translating chapter i never sees a fact first learned in chapter i or
+    later. When None (normal pipeline), the raw files pass through verbatim (comments preserved).
+    """
     chunks: list[str] = []
     for path in context_files(novel):
-        text = path.read_text(encoding="utf-8").strip()
-        if text:
-            chunks.append(f"### {path.name}\n```yaml\n{text}\n```")
+        raw = path.read_text(encoding="utf-8").strip()
+        if not raw:
+            continue
+        if max_chapter is None:
+            text = raw
+        else:
+            data = _prune_future(yaml.safe_load(raw), max_chapter)
+            if not data:
+                continue
+            text = yaml.safe_dump(data, allow_unicode=True, sort_keys=False).strip()
+        chunks.append(f"### {path.name}\n```yaml\n{text}\n```")
     return "\n\n".join(chunks)
 
 
-def load_translation_memory(novel: str) -> str:
+def load_translation_memory(novel: str, *, max_chapter: int | None = None) -> str:
     path = novel_dir(novel) / "translation_memory" / "phrases.jsonl"
     if not path.exists():
         return ""
     lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if max_chapter is not None:
+        kept = []
+        for ln in lines:
+            try:
+                obj = json.loads(ln)
+            except json.JSONDecodeError:
+                kept.append(ln)  # malformed lines are the validator's job, not dropped here
+                continue
+            fs = _first_seen_chapter(obj.get("first_seen")) if isinstance(obj, dict) else None
+            if fs is not None and fs >= max_chapter:
+                continue  # phrase first seen at/after this chapter: not available yet
+            kept.append(ln)
+        lines = kept
     return "\n".join(lines)
 
 
@@ -191,6 +258,7 @@ def assemble_translation_context(
     include_context: bool = True,
     include_translation_memory: bool = True,
     previous: list[tuple[int, str]] | None = None,
+    context_max_chapter: int | None = None,
 ) -> str:
     """Build the user-message context block for the translation pass.
 
@@ -204,6 +272,11 @@ def assemble_translation_context(
     on) it is used verbatim instead of reading the novel's own translated/ dir. This lets the
     benchmark give each condition its OWN independent history. The normal pipeline passes nothing
     (defaults all on, window read from the novel).
+
+    `context_max_chapter` chapter-bounds the canonical context and translation memory: records with
+    `first_seen >= context_max_chapter` are pruned, so translating chapter i cannot be influenced by
+    a fact first learned in chapter i or later. The benchmark passes the current chapter; the normal
+    pipeline leaves it None (no bounding).
     """
     cfg = load_novel_config(novel)
     parts: list[str] = []
@@ -217,12 +290,12 @@ def assemble_translation_context(
         parts.append(f"## Style guide\n{style}")
 
     if include_context:
-        records = load_context_records(novel)
+        records = load_context_records(novel, max_chapter=context_max_chapter)
         if records:
             parts.append(f"## Canonical context records\n{records}")
 
     if include_translation_memory:
-        tm = load_translation_memory(novel)
+        tm = load_translation_memory(novel, max_chapter=context_max_chapter)
         if tm:
             parts.append(
                 "## Translation memory (phrases/jokes already seen - do NOT re-explain these)\n"
