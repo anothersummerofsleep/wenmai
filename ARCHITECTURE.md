@@ -41,6 +41,30 @@ The test for any change: **if it encodes how one specific source language works,
 language layer.** If adding a language would require editing the core or the schema, that is a leak
 in the boundary to be fixed, not a feature to accept.
 
+## Persistent state (two stores)
+
+Wenmai keeps two distinct kinds of state, and the extraction pass proposes changes to each
+separately (human-reviewed, never auto-applied in V1):
+
+- **Canonical narrative/context records** live in `context/*.yaml` (characters, terminology,
+  locations, factions, timeline, relationships, world/power-system info). Keyed records that must
+  stay internally consistent forever.
+- **Recurring translation memory** lives in `translation_memory/phrases.jsonl` (recurring idioms,
+  jokes, previously explained wordplay, phrases whose handling must stay consistent, first-seen
+  annotation info). Line items, not world facts.
+
+A single new idiom can produce both: a `terms` record and a `translation_memory` line. The
+extraction proposal (`prompts/context_update.md`) puts canonical keys and a `translation_memory:`
+list in one YAML document; a human applies canonical keys to `context/<key>.yaml` and appends
+translation-memory entries as JSON lines. See `prompts/context_update.md` for the contract.
+
+## Language configuration is explicit
+
+Every novel MUST declare `source_language` and `target_language` in `novel.yaml`. There is no silent
+default; missing, empty, or malformed values raise `ConfigError` (`context.py`). This avoids a
+multilingual framework quietly assuming Chinese. Tests and the bundled demo declare their pair like
+any real novel.
+
 ## Extension points (the whole list)
 
 1. **`source_language` / `target_language` in `novel.yaml`.** These drive the source and translated

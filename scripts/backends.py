@@ -1,5 +1,10 @@
 """Pluggable LLM backends.
 
+A backend is purely about HOW and WHERE the model is called (transport and provider). It has
+nothing to do with language: linguistic behaviour lives in the language layer
+(prompts/languages/<lang>.md), never here. A backend receives an already-assembled prompt and
+returns text; it does not know or care what languages are involved.
+
 Every pass in the pipeline calls one interface, `LLMBackend.complete(...)`. Two backends ship:
 
 - ClaudeCodeBackend: no API key, no billing. Writes the assembled prompt to a handoff file and
@@ -7,8 +12,8 @@ Every pass in the pipeline calls one interface, `LLMBackend.complete(...)`. Two 
   translation pass with full review, then re-run to continue.
 - AnthropicBackend: calls the Claude API directly for unattended and CI runs.
 
-Add a Korean-tuned or third-party backend later by subclassing LLMBackend and registering it in
-`get_backend`.
+Add another provider (a different model API, a local runtime) later by subclassing LLMBackend and
+registering it in `get_backend`. That is a transport choice, orthogonal to source/target language.
 """
 from __future__ import annotations
 
@@ -21,6 +26,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 class PendingHandoff(Exception):
     """Raised by ClaudeCodeBackend when it has written a prompt and is waiting for a response file."""
+
+
+def _rel(path: Path) -> str:
+    """Path relative to the repo root for display, robust to paths outside it (e.g. tests)."""
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def load_config() -> dict:
@@ -76,8 +89,8 @@ class ClaudeCodeBackend(LLMBackend):
             if text:
                 return text
 
-        rel_prompt = prompt_path.relative_to(REPO_ROOT)
-        rel_response = response_path.relative_to(REPO_ROOT)
+        rel_prompt = _rel(prompt_path)
+        rel_response = _rel(response_path)
         raise PendingHandoff(
             "claude_code backend is waiting on a response.\n"
             f"  1. Read the assembled prompt:  {rel_prompt}\n"

@@ -1,8 +1,13 @@
-"""Context-extraction pass: propose new notebook entries from a finished chapter.
+"""Context-extraction pass: propose new notebook entries from a chapter.
 
-Runs the extraction prompt over a translated chapter and writes the model's proposed YAML additions
-to `novels/<novel>/context/_proposals/ch<NNNN>.yaml` for human review. It never edits the canonical
-context files directly - you merge approved entries in yourself (that is the reviewable diff).
+Runs the extraction prompt over the ORIGINAL source chapter plus its finished translation (and the
+existing canon) and writes the model's proposed YAML additions to
+`novels/<novel>/context/_proposals/ch<NNNN>.yaml` for human review. It never edits either persistent
+store directly - a human applies accepted entries (that is the reviewable diff).
+
+Proposals separate the two stores (see prompts/context_update.md):
+  - canonical keys (characters, terms, locations, factions, timeline, ...) -> context/<key>.yaml
+  - a `translation_memory:` list -> appended as JSON lines to translation_memory/phrases.jsonl
 
 Usage:
     python scripts/build_context.py --novel sample-novel --chapter 1
@@ -27,11 +32,17 @@ def run(novel: str, chapter: int, backend_name: str | None) -> int:
     config = backends.load_config()
     backend = backends.get_backend(backend_name, config)
 
+    # Give the extraction model all three: existing canon, the ORIGINAL source (so source-language
+    # terms, names, idioms, and `source:` values are recovered from the source rather than
+    # reconstructed from English), and the finished translation. Source path derives from the
+    # novel's source_language; nothing is hardcoded to Chinese.
     system = context.load_prompt("context_update.md")
     user_parts = [
         "## Existing canonical context (do not restate what is already here)",
         context.load_context_records(novel),
-        "## Newly translated chapter to extract from",
+        f"## Original source chapter ({context.source_language(novel)})",
+        context.read_source(novel, chapter),
+        "## Finished translation",
         translated_path.read_text(encoding="utf-8"),
     ]
     user = "\n\n".join(user_parts)
@@ -49,8 +60,10 @@ def run(novel: str, chapter: int, backend_name: str | None) -> int:
     proposals_dir.mkdir(parents=True, exist_ok=True)
     out = proposals_dir / f"ch{chapter:04d}.yaml"
     out.write_text(proposal.rstrip() + "\n", encoding="utf-8")
-    print(f"[extract] wrote proposals to {out.relative_to(context.REPO_ROOT)}")
-    print("Review it, then merge approved entries into the real context/*.yaml files by hand.")
+    print(f"[extract] wrote proposals to {context.display_path(out)}")
+    print("Review it, then apply accepted entries by hand: canonical keys -> context/<key>.yaml; "
+          "any `translation_memory` list -> appended as JSON lines to "
+          "translation_memory/phrases.jsonl.")
     return 0
 
 

@@ -17,10 +17,9 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parent.parent
 NOVELS_DIR = REPO_ROOT / "novels"
 
-# Fallback language codes when a novel.yaml omits them. Not an assumption that source is always zh:
-# every novel declares its own pair, and these only fill in for a malformed/missing config.
-DEFAULT_SOURCE_LANGUAGE = "zh"
-DEFAULT_TARGET_LANGUAGE = "en"
+
+class ConfigError(ValueError):
+    """A novel's configuration is missing or invalid (e.g. no declared language pair)."""
 
 # Preferred display order for the generic context files. Any other *.yaml present in a novel's
 # context/ dir (genre-specific ones like cultivation_system.yaml, honorifics.yaml, magic_system.yaml)
@@ -34,6 +33,19 @@ PREFERRED_CONTEXT_ORDER = [
 ]
 
 
+def display_path(path: Path) -> str:
+    """A short, human-friendly form of `path` for logs, robust to paths outside the repo.
+
+    Novels can live anywhere (and tests use temp dirs), so never assume a path is under REPO_ROOT.
+    """
+    for base in (NOVELS_DIR, REPO_ROOT):
+        try:
+            return str(path.relative_to(base))
+        except ValueError:
+            continue
+    return str(path)
+
+
 def novel_dir(novel: str) -> Path:
     path = NOVELS_DIR / novel
     if not path.is_dir():
@@ -42,19 +54,39 @@ def novel_dir(novel: str) -> Path:
 
 
 def load_novel_config(novel: str) -> dict:
+    """Read novel.yaml. A novel MUST have one; there is no silent default configuration."""
     path = novel_dir(novel) / "novel.yaml"
     if not path.exists():
-        return {"source_language": DEFAULT_SOURCE_LANGUAGE, "target_language": DEFAULT_TARGET_LANGUAGE}
+        raise ConfigError(
+            f"novel '{novel}': novel.yaml is missing. Every novel must declare its language pair, "
+            "e.g.\n  source_language: zh\n  target_language: en"
+        )
     with path.open(encoding="utf-8") as fh:
         return yaml.safe_load(fh) or {}
 
 
+def _require_language(novel: str, field: str) -> str:
+    """Return a validated, non-empty language code from novel.yaml, or raise ConfigError.
+
+    Wenmai is a multilingual framework: it never assumes Chinese (or any language). A real novel
+    must state its languages explicitly.
+    """
+    example = "zh" if field == "source_language" else "en"
+    value = load_novel_config(novel).get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigError(
+            f"novel '{novel}': novel.yaml must define a non-empty '{field}' (e.g. "
+            f"`{field}: {example}`). Wenmai does not assume a default language."
+        )
+    return value.strip()
+
+
 def source_language(novel: str) -> str:
-    return load_novel_config(novel).get("source_language", DEFAULT_SOURCE_LANGUAGE)
+    return _require_language(novel, "source_language")
 
 
 def target_language(novel: str) -> str:
-    return load_novel_config(novel).get("target_language", DEFAULT_TARGET_LANGUAGE)
+    return _require_language(novel, "target_language")
 
 
 def source_path(novel: str, chapter: int) -> Path:
@@ -156,8 +188,8 @@ def assemble_translation_context(novel: str, chapter: int, previous_chapters: in
     parts: list[str] = []
 
     parts.append(f"## Novel\n{cfg.get('title_english', novel)} "
-                 f"(source language: {cfg.get('source_language', DEFAULT_SOURCE_LANGUAGE)}, "
-                 f"target language: {cfg.get('target_language', DEFAULT_TARGET_LANGUAGE)})")
+                 f"(source language: {source_language(novel)}, "
+                 f"target language: {target_language(novel)})")
 
     style = load_style_guide(novel)
     if style:

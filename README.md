@@ -25,8 +25,8 @@ providing concise contextual explanations where they genuinely matter.
 
 Chinese-to-English is Wenmai's first supported translation path. The underlying architecture is
 intended to support additional source languages over time, with language-specific linguistic
-intelligence separated from the shared translation, context, memory, retrieval, consistency, and
-evaluation systems.
+intelligence separated from the shared systems for translation, context, memory, retrieval, and
+consistency. (A dedicated evaluation system is planned, not yet built; see Status below.)
 
 The aim is to combine the consistency of a maintained translation project with the contextual
 awareness of a human translator who has actually read the story.
@@ -113,13 +113,15 @@ extraction as separate stages, knowledge-graph retrieval). See "Roadmap" below.
 
 ## Backends (pluggable)
 
-The LLM call is behind one interface (`scripts/backends.py`), so the same pipeline runs two ways:
+A backend is only about how and where the model is called (transport and provider), never about
+language. The call is behind one interface (`scripts/backends.py`), so the same pipeline runs two
+ways:
 
 - **`claude_code`** (default): no API key, no per-token billing. The script assembles the full
   prompt into `.runs/<novel>/<chapter>/<pass>.prompt.md`, and you (via Claude Code) write the
   answer to `<pass>.response.md`, then re-run to continue. Good for careful, reviewed translation.
-- **`anthropic`**: calls the Claude API directly for unattended and CI runs. Needs
-  `ANTHROPIC_API_KEY`. Enables the GitHub Actions auto-PR flow.
+- **`anthropic`**: calls the Claude API directly for unattended runs. Needs `ANTHROPIC_API_KEY`.
+  This is what a future CI workflow would use.
 
 Pick the backend in `config.yaml` (copy from `config.example.yaml`) or with `--backend`.
 
@@ -154,21 +156,50 @@ Everything under `novels/<your-novel>/` is git-ignored, so it stays on your mach
 own translations in a private fork, remove the `novels/*` lines from `.gitignore` (or add a
 `!novels/<your-novel>` exception).
 
+## Development
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The suite covers language configuration and validation, context loading, translation continuity,
+consistency checking, the Claude Code handoff backend, and an end-to-end pipeline run on the bundled
+`sample-novel` using a fake backend (no API calls). It tests behaviour, not implementation details.
+
 ## Why GitHub
 
-Each chapter arrives as a pull request, so terminology changes, added notes, and new context
-entries all show up as reviewable diffs. If you rename a term 600 chapters in, git history and
-search make it feasible to find and fix every prior occurrence.
+Wenmai is designed so chapter translations and context changes can be reviewed as Git diffs and, in
+future automated workflows, surfaced as pull requests. Today you run the scripts locally and commit
+the results yourself; the diffs still show every terminology change, added note, and new context
+entry. If you rename a term 600 chapters in, git history and search make it feasible to find and fix
+every prior occurrence.
+
+## Status: implemented vs planned
+
+Implemented in v1 (this repo, tested for `zh -> en`):
+- Three-pass flow: context retrieval, LLM translate + annotate, terminology-drift consistency check.
+- Per-novel context records, translation memory, and language-neutral core with a `zh` overlay.
+- Pluggable backends (`claude_code` handoff, `anthropic` API).
+- Context-extraction pass that proposes reviewable additions (never auto-applied).
+
+Planned, NOT yet built:
+- A dedicated evaluation system.
+- Automated GitHub Actions that translate on push and open pull requests (the workflow in
+  `.github/workflows-example/` is a disabled stub, not an active pipeline).
+- Split semantic / literary-edit passes; knowledge-graph or embedding retrieval; automatic merging
+  of accepted proposals; additional source languages.
 
 ## Roadmap
 
 - v1 (this): repo + Markdown chapters + YAML context + pluggable script + three-pass flow, for
   Chinese to English. The core is kept language-neutral so the next language pair is additive.
 - Next: split translation into semantic / prose / literary-edit passes; automatic context
-  extraction on merge; GitHub Actions auto-PRs on the `anthropic` backend.
-- Later: additional source languages (Korean to English is the expected next pair, added as a
-  `prompts/languages/ko.md` overlay plus any ko-specific context files, with no core rewrite); a
-  small novel knowledge graph for retrieval; chapter ingestion from raw dumps; a reader interface.
+  extraction on merge; a real GitHub Actions workflow (on the `anthropic` backend) that opens PRs.
+- Later: a dedicated evaluation system; additional source languages (Korean to English is the
+  expected next pair, added as a `prompts/languages/ko.md` overlay plus any ko-specific context
+  files, with no core rewrite); a small novel knowledge graph for retrieval; chapter ingestion from
+  raw dumps; a reader interface.
 
 ## License
 

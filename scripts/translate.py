@@ -24,10 +24,29 @@ except ImportError:
     import backends, context, consistency_check  # type: ignore
 
 
+def build_system_prompt(novel: str, prev_n: int) -> str:
+    """Assemble the translation system prompt: language-neutral core + source-language overlay.
+
+    The core (prompts/translate.md) is parameterized by source/target language and never carries
+    language-specific linguistics. If prompts/languages/<source_language>.md exists it is appended;
+    if not, the core prompt still runs. Kept separate from `run` so it is testable without a backend.
+    """
+    src_lang = context.source_language(novel)
+    tgt_lang = context.target_language(novel)
+    system = (context.load_prompt("translate.md")
+              .replace("{SOURCE_LANGUAGE}", src_lang)
+              .replace("{TARGET_LANGUAGE}", tgt_lang)
+              .replace("{N}", str(prev_n)))
+    overlay = context.load_language_prompt(src_lang)
+    if overlay:
+        system += f"\n\n---\n\n# Source-language guidance ({src_lang})\n\n{overlay}"
+    return system
+
+
 def run(novel: str, chapter: int, backend_name: str | None, force: bool) -> int:
     out_path = context.translated_path(novel, chapter)
     if out_path.exists() and not force:
-        print(f"[skip] {out_path.relative_to(context.REPO_ROOT)} already exists. Use --force to redo.")
+        print(f"[skip] {context.display_path(out_path)} already exists. Use --force to redo.")
         return 0
 
     config = backends.load_config()
@@ -37,16 +56,7 @@ def run(novel: str, chapter: int, backend_name: str | None, force: bool) -> int:
     # Pass 1: assemble context.
     print(f"[pass 1] retrieving context for {novel} ch{chapter:04d} "
           f"(+{prev_n} previous chapters)...")
-    src_lang = context.source_language(novel)
-    tgt_lang = context.target_language(novel)
-    system = (context.load_prompt("translate.md")
-              .replace("{SOURCE_LANGUAGE}", src_lang)
-              .replace("{TARGET_LANGUAGE}", tgt_lang)
-              .replace("{N}", str(prev_n)))
-    # Append language-specific linguistic guidance if an overlay exists for this source language.
-    overlay = context.load_language_prompt(src_lang)
-    if overlay:
-        system += f"\n\n---\n\n# Source-language guidance ({src_lang})\n\n{overlay}"
+    system = build_system_prompt(novel, prev_n)
     user = context.assemble_translation_context(novel, chapter, prev_n)
 
     # Pass 2: translate + annotate.
@@ -60,7 +70,7 @@ def run(novel: str, chapter: int, backend_name: str | None, force: bool) -> int:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(translated.rstrip() + "\n", encoding="utf-8")
-    print(f"[pass 2] wrote {out_path.relative_to(context.REPO_ROOT)}")
+    print(f"[pass 2] wrote {context.display_path(out_path)}")
 
     # Pass 3: consistency check on the new chapter.
     print("[pass 3] consistency check...")
