@@ -1,0 +1,6 @@
+# Core
+PyYAML>=6.0
+
+# Optional: only needed for the `anthropic` backend (unattended / CI runs).
+# The default `claude_code` backend needs nothing beyond PyYAML.
+anthropic>=0.40.0

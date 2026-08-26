@@ -1,0 +1,19 @@
+# Sects, clans, organizations, and their internal ranks.
+factions:
+  azure_cloud_sect:
+    chinese: 青云宗
+    english: Azure Cloud Sect
+    avoid:
+      - Qingyun Sect
+    type: cultivation sect
+    ranks:
+      - outer disciple
+      - inner disciple
+      - core disciple
+      - elder
+    members:
+      - li_yun        # outer disciple
+      - zhang_shixiong
+      - elder_qingxu  # elder
+    first_seen: ch0001
+    notes: Name inferred from Azure Cloud Peak; confirm when the source states it explicitly.

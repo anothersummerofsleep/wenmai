@@ -1,0 +1,41 @@
+# Canonical character records. The translator loads relevant entries before each chapter and must
+# not deviate from `english`, aliases, or translation_notes.
+characters:
+  li_yun:
+    chinese: 李云
+    english: Li Yun
+    aliases: []
+    role: protagonist, outer-sect disciple
+    speech_style: cautious, defers to seniors, wary
+    relationships:
+      elder_qingxu: addressed as a sect elder
+    first_seen: ch0001
+    translation_notes:
+      - Do not translate 云 in his name as "Cloud"; keep it romanized as "Yun".
+
+  zhang_shixiong:
+    chinese: 张师兄
+    english: Senior Brother Zhang
+    aliases: []
+    role: senior disciple
+    speech_style: unknown (no dialogue yet)
+    relationships:
+      li_yun: senior of
+    first_seen: ch0001
+    translation_notes:
+      - 师兄 renders as "Senior Brother", per style_guide honorific table. Keep it, do not drop to
+        just "Zhang".
+
+  elder_qingxu:
+    chinese: 清虚长老
+    english: Elder Qingxu
+    aliases:
+      - the elder
+    role: sect elder on the dais
+    speech_style: measured, indirect, fond of double meanings
+    relationships:
+      li_yun: tests / observes
+    first_seen: ch0001
+    translation_notes:
+      - Name not yet stated in-text as of ch0001; introduced here for continuity. Confirm romanization
+        when the source first spells it out.

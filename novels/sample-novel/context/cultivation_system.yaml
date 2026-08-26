@@ -1,0 +1,25 @@
+# The novel's power system: realms, stages, techniques. Keep realm names and order stable across
+# the whole book; drift here is the most jarring kind for readers.
+realms:
+  # Ordered low -> high. None are named in the ch0001 sample yet; seed as the source reveals them.
+  # Example shape:
+  # - chinese: 炼气
+  #   english: Qi Refining
+  #   order: 1
+  #   avoid: [Qi Condensation, Body Refinement]
+
+techniques:
+  # Named arts / skills. Lock the English on first appearance to prevent the classic
+  # "Heavenly Origin Sword Art" -> "Celestial Source Sword Technique" drift.
+  # Example shape:
+  # sword_art_x:
+  #   chinese: ...
+  #   english: ...
+  #   avoid: [...]
+  #   first_seen: ch0000
+
+concepts:
+  qi:
+    chinese: 气
+    english: qi
+    note: See terms.qi in terminology.yaml; also carries temper/cockiness double meaning.

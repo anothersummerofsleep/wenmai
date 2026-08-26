@@ -1,0 +1,20 @@
+# Places. Same discipline as terminology: `english` is canonical, `avoid` feeds the drift checker.
+locations:
+  azure_cloud_peak:
+    chinese: 青云峰
+    english: Azure Cloud Peak
+    avoid:
+      - Green Cloud Peak
+      - Qingyun Peak
+    type: sect peak
+    first_seen: ch0001
+    notes: Visible from the main hall; the elder looks toward it at the end of ch0001.
+
+  main_hall:
+    chinese: 大殿
+    english: the hall
+    avoid:
+      - the great hall
+    type: sect building
+    first_seen: ch0001
+    notes: Where disciples gather before the elders' dais.

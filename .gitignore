@@ -1,0 +1,25 @@
+# Local config (may hold API keys / model choices)
+config.yaml
+
+# Secrets
+.env
+*.key
+
+# Pipeline scratch: assembled prompts + handoff responses
+.runs/
+
+# Context-extraction proposals awaiting review
+**/context/_proposals/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

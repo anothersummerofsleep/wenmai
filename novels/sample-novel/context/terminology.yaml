@@ -1,0 +1,45 @@
+# Canonical term glossary. `preferred` is the only allowed rendering; `avoid` lists variants the
+# consistency checker flags if they appear in translated/ output. This is the anti-drift spine.
+terms:
+  qi:
+    chinese: 气
+    preferred: qi
+    avoid:
+      - chi
+      # Note: don't list plain common words like "energy" here. The drift checker does substring
+      # matching, so a common word fires inside glosses and unrelated prose. Reserve `avoid` for
+      # distinctive variants (misspellings, alternate romanizations, competing coined names).
+    explanation: >
+      Cultivation life-energy. Kept romanized as "qi". Note that 气 also carries "temper/anger" and
+      "cockiness", which drives the ch0001 wordplay; flag such double meanings rather than collapsing
+      them to one word.
+
+  dao_xin:
+    chinese: 道心
+    preferred: Dao Heart
+    avoid:
+      - heart of the Dao
+      - Taoist heart
+      - dao-heart
+    explanation: >
+      A cultivator's conviction and psychological commitment to their path, not merely emotional
+      resolve.
+
+  azure_cloud_peak:
+    chinese: 青云峰
+    preferred: Azure Cloud Peak
+    avoid:
+      - Green Cloud Peak
+      - Qingyun Peak
+    explanation: >
+      The sect's main peak and namesake location. Keep the meaning-translated form for landmarks per
+      style_guide.
+
+  old_fox:
+    chinese: 老狐狸
+    preferred: old fox
+    avoid:
+      - old vixen
+    explanation: >
+      Idiom for a shrewd, cunning, experienced person. On first appearance keep the Chinese inline
+      plus a translator's note (see ch0001); later appearances need only "old fox".

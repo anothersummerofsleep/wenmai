@@ -1,0 +1,2 @@
+{"phrase_zh": "老狐狸", "gloss": "old fox", "kind": "idiom", "first_seen": "ch0001", "handling": "Keep Chinese inline + translator's note on first appearance; plain 'old fox' thereafter.", "note_text": "a set expression for someone extremely shrewd and cunning, not a literal comment on age"}
+{"phrase_zh": "很有气", "gloss": "have a lot of qi / temper", "kind": "pun", "first_seen": "ch0001", "handling": "Preserve both meanings with a [Wordplay] note; do not collapse to one reading.", "note_text": "气 = qi/energy but also temper/cockiness; the elder plays on both"}

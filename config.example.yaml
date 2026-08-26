@@ -1,0 +1,20 @@
+# Copy to config.yaml and edit. config.yaml is gitignored (may hold model choices / paths).
+
+# Which LLM backend drives the translation and extraction passes.
+#   claude_code -> file handoff, no API key, no billing (default)
+#   anthropic   -> direct API calls for unattended / CI runs (needs ANTHROPIC_API_KEY)
+backend: claude_code
+
+anthropic:
+  # Model id for the anthropic backend. Use the latest capable Claude model.
+  model: claude-opus-4-8
+  max_tokens: 8000
+  # The key is read from the ANTHROPIC_API_KEY environment variable, never from this file.
+
+claude_code:
+  # Where prompt/response handoff files are written for the claude_code backend.
+  runs_dir: .runs
+
+# How much preceding context to retrieve before translating a chapter.
+retrieval:
+  previous_chapters: 2   # include the N previously translated chapters as context

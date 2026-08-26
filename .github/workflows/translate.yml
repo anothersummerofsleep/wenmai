@@ -1,0 +1,38 @@
+# Auto-translation CI (DISABLED by default).
+#
+# This is a v1 stub for the future auto-PR flow. It only makes sense on the `anthropic` backend,
+# which needs an ANTHROPIC_API_KEY repo secret and per-token billing. Enable it deliberately, once
+# you have decided to run unattended: uncomment the triggers below and add the secret.
+#
+# When enabled, the intended flow is: push new source/ch####_zh.txt -> CI translates the new
+# chapters -> opens a pull request with the translated Markdown, updated proposals, and the
+# consistency-check summary in the PR body, for you to review and merge.
+
+name: translate
+
+on:
+  workflow_dispatch: {}   # manual-only for now
+  # push:
+  #   paths:
+  #     - "novels/**/source/ch*_zh.txt"
+
+jobs:
+  translate:
+    if: ${{ false }}   # hard-off until you wire ANTHROPIC_API_KEY and choose the anthropic backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Translate changed chapters
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "Wire this up when moving to the anthropic backend."
+          # Example (once a helper enumerates untranslated chapters):
+          #   python scripts/translate.py --novel <novel> --chapter <n> --backend anthropic
+          #   python scripts/build_context.py --novel <novel> --chapter <n> --backend anthropic
+          #   python scripts/consistency_check.py --novel <novel>
+      # A later step would open a PR with peter-evans/create-pull-request.

@@ -1,0 +1,9 @@
+title_source: 青云问道
+title_english: Asking the Way at Azure Cloud
+slug: sample-novel
+source_language: zh        # zh now; ko planned. Prompts read this to pick source-language rules.
+target_language: en
+genre: xianxia
+# Pointer to the prose voice for this novel.
+style_guide: style_guide.md
+status: demo               # this is an invented sample, not a real novel
