@@ -190,6 +190,7 @@ def assemble_translation_context(
     include_previous: bool = True,
     include_context: bool = True,
     include_translation_memory: bool = True,
+    previous: list[tuple[int, str]] | None = None,
 ) -> str:
     """Build the user-message context block for the translation pass.
 
@@ -199,7 +200,10 @@ def assemble_translation_context(
       - include_previous: the previous N translated chapters (rolling window)
       - include_context: the canonical context/*.yaml records
       - include_translation_memory: the translation-memory phrases
-    The normal pipeline uses the defaults (all on).
+    `previous` overrides where the rolling window comes from: when provided (and include_previous is
+    on) it is used verbatim instead of reading the novel's own translated/ dir. This lets the
+    benchmark give each condition its OWN independent history. The normal pipeline passes nothing
+    (defaults all on, window read from the novel).
     """
     cfg = load_novel_config(novel)
     parts: list[str] = []
@@ -225,7 +229,8 @@ def assemble_translation_context(
                 f"```jsonl\n{tm}\n```")
 
     if include_previous:
-        prevs = previous_translations(novel, chapter, previous_chapters)
+        prevs = previous if previous is not None else previous_translations(
+            novel, chapter, previous_chapters)
         if prevs:
             blocks = [f"### Chapter {num}\n{text}" for num, text in prevs]
             parts.append("## Previous translated chapters (for voice and continuity)\n"

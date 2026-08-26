@@ -9,10 +9,20 @@ conditions per chapter, using the SAME backend/model/settings and the SAME assem
   B  rolling-context  : A + the previous N translated chapters (rolling window).
   C  full Wenmai      : B + canonical context/*.yaml + translation memory.
 
-The rolling window fed to B and C is identical: it is Condition C's own accumulated translated
-history (the pipeline's real output). So B vs C isolates exactly one variable - structured memory -
-holding the recent-chapter window constant. See benchmarks/README.md for the methodology and its
-known caveats.
+Default mode is `independent`: B accumulates and retrieves only B's own prior translations, C only
+C's. This is a true end-to-end comparison of a rolling-context translator vs full Wenmai, including
+how decisions and mistakes propagate over time within each system. An optional `shared_c` mode gives
+B and C the same window (C's history) as a controlled per-chapter ablation of structured memory.
+
+C's state-update protocol (V1, human-in-the-loop):
+    source chapter + C's translation + existing C state  ->  extraction proposal  ->  HUMAN review
+    ->  accepted canonical context/*.yaml + translation_memory  ->  used for the next chapter.
+The harness accumulates C's translated history automatically; the canonical context and translation
+memory are curated by a human into the state novel between chapters (not auto-applied).
+
+The official reference translation NEVER participates in context generation, state curation,
+translation prompting, or style-guide construction. It is consulted only after blind scoring, for
+post-hoc comparison. See benchmarks/README.md for the full methodology and its known caveats.
 
 Copyright: benchmark source text, the official reference translation, and generated candidates all
 live under .local/ (git-ignored) and never enter the public repo. Only code, the manifest, and
@@ -148,26 +158,58 @@ def _prev_n() -> int:
     return int(backends.load_config().get("retrieval", {}).get("previous_chapters", 2))
 
 
-def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str) -> dict:
+def _history_dir(run_dir, cond: str):
+    return run_dir / "_histories" / cond
+
+
+def _read_history(run_dir, cond: str, chapter: int, n: int, tgt: str) -> list[tuple[int, str]]:
+    """The previous N translated chapters from one condition's OWN accumulated history."""
+    d = _history_dir(run_dir, cond)
+    out: list[tuple[int, str]] = []
+    for prev in range(max(1, chapter - n), chapter):
+        p = d / f"ch{prev:04d}_{tgt}.md"
+        if p.exists():
+            out.append((prev, p.read_text(encoding="utf-8")))
+    return out
+
+
+def _write_history(run_dir, cond: str, chapter: int, tgt: str, text: str) -> None:
+    d = _history_dir(run_dir, cond)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"ch{chapter:04d}_{tgt}.md").write_text(text, encoding="utf-8")
+
+
+def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
+                     mode: str = "independent") -> dict:
     """Generate A/B/C candidates for one chapter, write blinded outputs, return the blinding map.
 
-    Assumes chapters < `chapter` for Condition C already exist in state/translated (call chapters in
-    order). Writes C's output back into state/translated so it becomes the next chapter's window.
+    Histories are per-condition. In the default `independent` mode, B retrieves and accumulates only
+    B's prior outputs and C only C's, so the run is a true end-to-end comparison of two systems
+    (mistakes propagate within each). In the optional `shared_c` mode, B and C share Condition C's
+    history (a controlled per-chapter ablation of structured memory, window held constant). A is
+    stateless in both. Call chapters in order.
     """
     novel = _use_state_novel(bid)
     prev_n = _prev_n()
+    tgt = context.target_language(novel)
     system = translate.build_system_prompt(novel, prev_n)
+    run_dir = local_root(bid) / "runs" / run_id
 
     outputs: dict[str, str] = {}
     for cond, flags in CONDITIONS.items():
-        user = context.assemble_translation_context(novel, chapter, prev_n, **flags)
+        prev = None
+        if flags["include_previous"]:
+            window_cond = "C" if (mode == "shared_c" and cond in ("B", "C")) else cond
+            prev = _read_history(run_dir, window_cond, chapter, prev_n, tgt)
+        user = context.assemble_translation_context(novel, chapter, prev_n, previous=prev, **flags)
         tag = f"benchmark/{bid}/{run_id}/ch{chapter:04d}/{cond}"
         outputs[cond] = backend.complete(system, user, tag=tag).rstrip() + "\n"
 
-    # C accumulates: its output becomes part of the shared rolling window for later chapters.
-    c_path = context.translated_path(novel, chapter)
-    c_path.parent.mkdir(parents=True, exist_ok=True)
-    c_path.write_text(outputs["C"], encoding="utf-8")
+    # Accumulate histories. C always keeps its own; B keeps its own only in independent mode
+    # (in shared_c it reads C's). A is stateless and keeps none.
+    _write_history(run_dir, "C", chapter, tgt, outputs["C"])
+    if mode == "independent":
+        _write_history(run_dir, "B", chapter, tgt, outputs["B"])
 
     # Blind: shuffle conditions onto neutral labels; store the mapping separately from candidates.
     rng = random.Random(f"{seed}:{chapter}")
@@ -194,14 +236,15 @@ def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str) ->
     return label_to_cond
 
 
-def generate(bid: str, chapters: list[int], backend_name: str | None, run_id: str, seed: str) -> None:
+def generate(bid: str, chapters: list[int], backend_name: str | None, run_id: str, seed: str,
+             mode: str = "independent") -> None:
     problems = check_local(bid, chapters)
     if problems:
         raise FileNotFoundError("benchmark corpus not ready:\n  - " + "\n  - ".join(problems))
     backend = backends.get_backend(backend_name, backends.load_config())
     for ch in chapters:
-        print(f"[benchmark] generating ch{ch:04d} (A/B/C) via '{backend.name}'...")
-        generate_chapter(bid, ch, backend, run_id, seed)
+        print(f"[benchmark] generating ch{ch:04d} (A/B/C, mode={mode}) via '{backend.name}'...")
+        generate_chapter(bid, ch, backend, run_id, seed, mode=mode)
     print(f"[benchmark] done. Candidates under {context.display_path(local_root(bid) / 'runs' / run_id)}")
 
 
@@ -313,6 +356,9 @@ def main() -> int:
     p_gen.add_argument("--backend", default=None)
     p_gen.add_argument("--run", default=None)
     p_gen.add_argument("--seed", default="wenmai")
+    p_gen.add_argument("--mode", default="independent", choices=("independent", "shared_c"),
+                       help="independent (default): B and C keep separate histories (end-to-end "
+                            "comparison). shared_c: B and C share C's history (per-chapter ablation).")
 
     p_an = sub.add_parser("analyze", help="unblind and aggregate results")
     p_an.add_argument("--benchmark", required=True)
@@ -335,7 +381,8 @@ def main() -> int:
         if args.cmd == "generate":
             load_manifest(args.benchmark)
             run_id = args.run or datetime.now().strftime("%Y%m%d-%H%M%S")
-            generate(args.benchmark, parse_chapters(args.chapters), args.backend, run_id, args.seed)
+            generate(args.benchmark, parse_chapters(args.chapters), args.backend, run_id,
+                     args.seed, mode=args.mode)
             return 0
         if args.cmd == "analyze":
             load_manifest(args.benchmark)

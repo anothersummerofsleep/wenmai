@@ -28,27 +28,55 @@ chapter. The key comparisons:
 - **B vs C** - does structured persistent memory add value *beyond* a rolling context window? This
   is the important one, and the benchmark is deliberately built so it can come out negative.
 
-## The shared rolling window (a deliberate methodology choice)
+## Histories: independent by default
 
-B and C receive the *same* previous-chapter window: **Condition C's own accumulated translated
-output**. Because the window text is identical for B and C, the only difference between them is the
-structured context. That isolates the variable cleanly.
+The primary research question is an **end-to-end** comparison between a rolling-context translator
+and Wenmai, including how decisions and mistakes propagate over time. So the default mode is
+`independent`:
 
-Trade-off, stated plainly: since C's history was produced with structured context, B is reading a
-window that indirectly benefited from structure. So B is not a fully standalone "rolling-only
-product"; it is an ablation that answers "at chapter *i*, holding the recent window identical, does
-adding structured memory change the output?" If you instead want B to accumulate its own
-rolling-only history, that is a different (also valid) experiment; this harness does not do it yet.
-See "Known methodological risks" below.
+- **B** accumulates and retrieves **only B's** prior translations.
+- **C** accumulates and retrieves **only C's** prior translations (plus its curated canonical
+  context and translation memory).
+- **A** is stateless.
 
-## Sequential accumulation
+Each condition therefore lives with its own history and its own compounding mistakes, which is what
+a real deployment of either system would do. `A vs C` asks whether context helps at all; `B vs C`
+asks whether structured memory beats a plain rolling window, end to end.
 
-Chapters run in order. Condition C's output for each chapter is written into the state novel's
-`translated/` dir, so it becomes part of the window for the next chapter. Canonical `context/*.yaml`
-and `translation_memory/phrases.jsonl` for the state novel are **curated by you** as you read (V1
-keeps context extraction human-reviewed; the benchmark does not auto-mutate canonical state). This
-is what lets you watch whether C's advantage grows as more chapters (and more accumulated state)
-accrue.
+### Optional `shared_c` mode (controlled ablation)
+
+`--mode shared_c` gives B and C the *same* window - Condition C's history - so the only difference
+between them at each chapter is the structured context. This is a tighter per-chapter ablation, but
+B is then reading a window that indirectly benefited from structure, so it is not a standalone
+rolling-only system. Use it to probe a single chapter; use the default `independent` for the real
+experiment.
+
+## Sequential accumulation and C's state-update protocol
+
+Chapters run in order. Each condition's output is written to its own history
+(`runs/<run_id>/_histories/<cond>/`) and becomes that condition's window for the next chapter.
+
+Condition C additionally accumulates **canonical state**, human-reviewed:
+
+```
+source chapter + C's translation + existing C state
+  -> extraction proposal (scripts/build_context.py)
+  -> HUMAN review
+  -> accepted entries into state/context/*.yaml and state/translation_memory/phrases.jsonl
+  -> used when translating the next chapter
+```
+
+The harness accumulates C's translated history automatically; it does **not** auto-mutate canonical
+context or translation memory (V1 keeps that human-reviewed). This is what lets you watch whether
+C's advantage grows as more chapters, and more accumulated state, accrue.
+
+## The reference translation is eval-only (hard rule)
+
+The official English translation must **never** participate in context generation, state curation,
+translation prompting, or style-guide construction. It is consulted **only after blind scoring**,
+for post-hoc human comparison. Do not curate `state/context/*.yaml` from it (curate from the source
+and your own reading). It is not ground truth, and lexical similarity to it (BLEU/ROUGE) is
+deliberately not an evaluation metric.
 
 ## Local layout (git-ignored)
 
@@ -58,11 +86,11 @@ accrue.
     novel.yaml                   source_language / target_language (required)
     style_guide.md               target prose voice
     source/    ch0001_zh.txt ...  (you supply)
-    context/   *.yaml            (you curate as you read)
+    context/   *.yaml            (you curate as you read; C's canonical state)
     translation_memory/phrases.jsonl
-    translated/ ch0001_en.md ... (C's accumulating outputs; created by the harness)
   reference/   ch0001_en.md ...  official translation (eval only, NEVER prompted)
   runs/<run_id>/
+    _histories/<A|B|C>/ch0001_en.md ...  per-condition accumulating output (A keeps none)
     ch0001/
       candidate_1.md candidate_2.md candidate_3.md   (blinded)
       deterministic.yaml     (objective checks per candidate)
@@ -96,16 +124,20 @@ inspectable prompt and no pretense of being objective truth.
 
 ```bash
 python scripts/benchmark.py check    --benchmark lotm --chapters 1-10
-python scripts/benchmark.py generate --benchmark lotm --chapters 1-10 --run r1
+python scripts/benchmark.py generate --benchmark lotm --chapters 1-10 --run r1   # independent (default)
+python scripts/benchmark.py generate --benchmark lotm --chapters 1-10 --run r1 --mode shared_c
 python scripts/benchmark.py analyze  --benchmark lotm --run r1
 ```
 
 `generate` errors clearly if any required local file is missing. Use the same backend across a run
-so no condition gets a more capable model than another.
+so no condition gets a more capable model than another. Between chapters, review Condition C's
+extraction proposals and apply accepted entries to `state/context/` and
+`state/translation_memory/` (the C state-update protocol above).
 
 ## Known methodological risks
 
-- **Shared window from C** (above): B indirectly benefits from structure-informed history.
+- **Mode choice**: `independent` (default) is the real end-to-end comparison; `shared_c` is a
+  tighter ablation where B reads C's structure-informed history and so is not standalone.
 - **Curated context is not free of the treatment**: if you write canonical context by reading the
   official translation, C can inherit the reference's interpretations. Prefer curating context from
   the source (and your own reading), not from the reference.

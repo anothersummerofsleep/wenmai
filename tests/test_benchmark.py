@@ -93,8 +93,64 @@ def test_conditions_include_the_right_context(bench):
     assert "Previous translated chapters" in c2
     assert "Canonical context records" in c2
     assert "Translation memory" in c2
-    # Shared window: C's chapter-1 output was written back and is visible to both B and C.
-    assert (benchmark.local_root(bench) / "state" / "translated" / "ch0001_en.md").exists()
+    # Independent histories (default): each condition kept its own chapter-1 output; A keeps none.
+    run = benchmark.local_root(bench) / "runs" / "r1"
+    assert (run / "_histories" / "C" / "ch0001_en.md").exists()
+    assert (run / "_histories" / "B" / "ch0001_en.md").exists()
+    assert not (run / "_histories" / "A").exists()
+
+
+class MarkerBackend:
+    """Fake backend that stamps each output with its condition + chapter, to trace histories."""
+    name = "fake"
+
+    def __init__(self):
+        self.calls = []
+
+    def complete(self, system, user, *, tag):
+        parts = tag.split("/")
+        cond, chap = parts[-1], parts[-2]
+        self.calls.append({"tag": tag, "user": user})
+        return f"---\n---\n# {chap}\n\nMARKER-{cond}-{chap} qi.\n"
+
+
+def _user_for(rec, bid, chapter, cond):
+    tag = f"benchmark/{bid}/r1/ch{chapter:04d}/{cond}"
+    return next(c["user"] for c in rec.calls if c["tag"] == tag)
+
+
+def _add_source(bench, chapter):
+    src = benchmark.local_root(bench) / "state" / "source" / f"ch{chapter:04d}_zh.txt"
+    src.write_text(f"第{chapter}章 内容", encoding="utf-8")
+
+
+def test_independent_histories_by_chapter_3(bench):
+    # Default (independent) mode: by ch3, B must see only B's prior outputs and C only C's.
+    _add_source(bench, 3)
+    rec = MarkerBackend()
+    for ch in (1, 2, 3):
+        benchmark.generate_chapter(bench, ch, rec, run_id="r1", seed="s")
+
+    b3, c3, a3 = _user_for(rec, bench, 3, "B"), _user_for(rec, bench, 3, "C"), _user_for(rec, bench, 3, "A")
+    # B retrieves only B's history (ch1, ch2), never C's.
+    assert "MARKER-B-ch0001" in b3 and "MARKER-B-ch0002" in b3
+    assert "MARKER-C-" not in b3
+    # C retrieves only C's history, never B's.
+    assert "MARKER-C-ch0001" in c3 and "MARKER-C-ch0002" in c3
+    assert "MARKER-B-" not in c3
+    # A is stateless: no history window at all.
+    assert "MARKER-" not in a3
+    assert "Previous translated chapters" not in a3
+
+
+def test_shared_c_mode_shares_c_history(bench):
+    # Optional ablation mode: B reads C's history instead of its own.
+    _add_source(bench, 3)
+    rec = MarkerBackend()
+    for ch in (1, 2, 3):
+        benchmark.generate_chapter(bench, ch, rec, run_id="r1", seed="s", mode="shared_c")
+    b3 = _user_for(rec, bench, 3, "B")
+    assert "MARKER-C-ch0002" in b3
 
 
 def test_deterministic_scores_detect_banned_variant(bench):
