@@ -1,4 +1,10 @@
-# webnovel-translator
+# Wenmai · 文脉
+
+**Context-aware Chinese-to-English webnovel translation with terminology consistency, narrative
+memory, and inline wordplay explanations.**
+
+> 文脉 (wénmài): the literary thread of meaning and continuity that runs through a text. This tool
+> tries to keep that thread intact across an entire novel, not just one chapter at a time.
 
 A version-controlled fan-translation pipeline for web novels. It treats a novel as a
 long-running translation project with a persistent **translator's notebook**, not a stack of
