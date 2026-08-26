@@ -1,3 +1,12 @@
+# --- Your content stays local ------------------------------------------------
+# This repo is a reusable tool. Your own novels (copyrighted source + your
+# translations) are git-ignored by default, so cloning, running, and adding
+# novels never commits anyone else's work. Only the bundled demo ships.
+# If you WANT to version your own novels in a private fork, delete these two
+# lines (or add a matching `!novels/<your-novel>` exception).
+novels/*
+!novels/sample-novel
+
 # Local config (may hold API keys / model choices)
 config.yaml
 

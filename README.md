@@ -9,6 +9,11 @@ terminology, and annotates wordplay in brackets only when a note actually earns 
 Source language for v1 is Chinese (`zh`). The structure is built so Korean (`ko`) slots in later
 without a rewrite.
 
+**It is a tool, not a content repo.** Clone it, run it on your own machine, and point it at your
+own novels. Your novels and translations live under `novels/` and are git-ignored by default, so
+they stay local to you and never get committed or shared. The only novel that ships with the repo
+is the invented `sample-novel` demo. Bring your own LLM access (either backend, see below).
+
 ## The annotation idea
 
 The translator adds an inline note only when a literal rendering would silently drop information a
@@ -86,6 +91,19 @@ python scripts/build_context.py --novel sample-novel --chapter 1
 
 `novels/sample-novel/` ships as a tiny invented demo so every step runs end to end.
 
+### Adding your own novel
+
+```bash
+mkdir -p novels/<your-novel>/{source,translated,context,translation_memory}
+# add source/ch0001_zh.txt ... , then seed context/*.yaml and style_guide.md
+# (copy sample-novel's files as templates)
+python scripts/translate.py --novel <your-novel> --chapter 1
+```
+
+Everything under `novels/<your-novel>/` is git-ignored, so it stays on your machine. To version your
+own translations in a private fork, remove the `novels/*` lines from `.gitignore` (or add a
+`!novels/<your-novel>` exception).
+
 ## Why GitHub
 
 Each chapter arrives as a pull request, so terminology changes, added notes, and new context
@@ -100,9 +118,16 @@ search make it feasible to find and fix every prior occurrence.
 - Later: a small novel knowledge graph (entities and relations) for retrieval; chapter ingestion
   from raw dumps; a reader interface; Korean source support.
 
+## License
+
+The tool (scripts, prompts, schema, and the invented `sample-novel`) is released under the
+[MIT License](LICENSE). Use it, fork it, build on it.
+
 ## A note on rights
 
-This is tooling for personal fan translation. Web-novel source text is copyrighted by its authors
-and publishers. Keep real source chapters and any redistributable output on the right side of
-whatever license or personal-use terms apply to you; the shipped `sample-novel` is invented for
-this repo.
+This project is translation *tooling*. It does not host, bundle, or distribute any copyrighted novel
+content, and the maintainers are not responsible for what anyone translates with it. Web-novel
+source text is copyrighted by its authors and publishers. You are responsible for how you obtain
+source chapters and what you do with the output, including any redistribution. Keep your own novels
+and translations local (that is the default; see "It is a tool, not a content repo" above). The
+shipped `sample-novel` is fully invented for this repo.
