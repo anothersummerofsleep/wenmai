@@ -2,7 +2,7 @@
 # consistency checker flags if they appear in translated/ output. This is the anti-drift spine.
 terms:
   qi:
-    chinese: 气
+    source: 气
     preferred: qi
     avoid:
       - chi
@@ -15,7 +15,7 @@ terms:
       them to one word.
 
   dao_xin:
-    chinese: 道心
+    source: 道心
     preferred: Dao Heart
     avoid:
       - heart of the Dao
@@ -26,7 +26,7 @@ terms:
       resolve.
 
   azure_cloud_peak:
-    chinese: 青云峰
+    source: 青云峰
     preferred: Azure Cloud Peak
     avoid:
       - Green Cloud Peak
@@ -36,7 +36,7 @@ terms:
       style_guide.
 
   old_fox:
-    chinese: 老狐狸
+    source: 老狐狸
     preferred: old fox
     avoid:
       - old vixen

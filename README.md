@@ -2,8 +2,11 @@
 
 **Translate the words. Preserve the thread.**
 
-Wenmai is an open-source framework for context-aware long-form webnovel translation, starting with
-Chinese-to-English translation.
+*A context-aware long-form translation framework for webnovels, starting with Chinese-to-English
+translation.*
+
+Wenmai is an open-source framework for context-aware long-form webnovel translation. Its scope is
+multilingual by design; its first supported path is Chinese to English.
 
 Webnovels can span hundreds or thousands of chapters. Understanding a single sentence may depend on
 events, relationships, terminology, jokes, titles, or translation choices established hundreds of
@@ -79,24 +82,31 @@ See `prompts/translate.md` for the full rule.
 
 ```
 novels/<novel>/
-  source/         ch0001_zh.txt, ch0002_zh.txt, ...   (immutable source)
-  translated/     ch0001_en.md, ...                    (output; one PR per chapter)
-  context/        characters.yaml terminology.yaml locations.yaml
-                  factions.yaml cultivation_system.yaml timeline.yaml
+  source/         ch0001_<src>.txt, ...                (immutable source; suffix = source_language)
+  translated/     ch0001_<tgt>.md, ...                 (output; suffix = target_language; one PR/chapter)
+  context/        characters.yaml terminology.yaml locations.yaml factions.yaml timeline.yaml
+                  (+ any novel-specific files, e.g. cultivation_system.yaml, honorifics.yaml)
   translation_memory/phrases.jsonl                     (recurring idioms/jokes, first-seen refs)
-  novel.yaml      per-novel config (source language, title, prose style pointer)
-  style_guide.md  the agreed English prose voice for this novel
-prompts/          translate.md, context_update.md, review.md
+  novel.yaml      per-novel config (source_language, target_language, title, prose style pointer)
+  style_guide.md  the agreed target-language prose voice for this novel
+prompts/          translate.md (language-neutral core), context_update.md, review.md
+  languages/      zh.md, ...   (source-language linguistic overlays; ko planned)
 scripts/          translate.py build_context.py consistency_check.py backends.py context.py
-.github/workflows/translate.yml   (CI stub, disabled until API backend is chosen)
+.github/workflows-example/translate.yml   (CI stub; move into .github/workflows/ to enable)
 ```
+
+Everything a novel needs to know about its languages lives in `novel.yaml` as `source_language` /
+`target_language`. The core loads whatever `*.yaml` a novel puts in `context/`, so genre- or
+language-specific files can be added without a code change. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Pipeline (v1 = three passes)
 
 ```
-Chinese  ->  [1] context retrieval  ->  [2] translate + annotate  ->  [3] consistency check  ->  English
-              (Python, mechanical)       (LLM)                         (Python, mechanical)
+Source (zh)  ->  [1] context retrieval  ->  [2] translate + annotate  ->  [3] consistency check  ->  Target (en)
+                  (Python, mechanical)       (LLM)                         (Python, mechanical)
 ```
+
+Source and target are whatever the novel declares; v1 ships and is tested for `zh -> en`.
 
 Later this grows toward the full seven passes (semantic analysis, literary edit, context
 extraction as separate stages, knowledge-graph retrieval). See "Roadmap" below.
@@ -152,11 +162,13 @@ search make it feasible to find and fix every prior occurrence.
 
 ## Roadmap
 
-- v1 (this): repo + Markdown chapters + YAML context + pluggable script + three-pass flow.
+- v1 (this): repo + Markdown chapters + YAML context + pluggable script + three-pass flow, for
+  Chinese to English. The core is kept language-neutral so the next language pair is additive.
 - Next: split translation into semantic / prose / literary-edit passes; automatic context
   extraction on merge; GitHub Actions auto-PRs on the `anthropic` backend.
-- Later: a small novel knowledge graph (entities and relations) for retrieval; chapter ingestion
-  from raw dumps; a reader interface; Korean source support.
+- Later: additional source languages (Korean to English is the expected next pair, added as a
+  `prompts/languages/ko.md` overlay plus any ko-specific context files, with no core rewrite); a
+  small novel knowledge graph for retrieval; chapter ingestion from raw dumps; a reader interface.
 
 ## License
 

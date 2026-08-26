@@ -3,7 +3,7 @@
 realms:
   # Ordered low -> high. None are named in the ch0001 sample yet; seed as the source reveals them.
   # Example shape:
-  # - chinese: 炼气
+  # - source: 炼气
   #   english: Qi Refining
   #   order: 1
   #   avoid: [Qi Condensation, Body Refinement]
@@ -13,13 +13,13 @@ techniques:
   # "Heavenly Origin Sword Art" -> "Celestial Source Sword Technique" drift.
   # Example shape:
   # sword_art_x:
-  #   chinese: ...
+  #   source: ...
   #   english: ...
   #   avoid: [...]
   #   first_seen: ch0000
 
 concepts:
   qi:
-    chinese: 气
+    source: 气
     english: qi
     note: See terms.qi in terminology.yaml; also carries temper/cockiness double meaning.

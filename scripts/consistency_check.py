@@ -16,20 +16,13 @@ import argparse
 import re
 import sys
 from dataclasses import dataclass
-from pathlib import Path
 
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-NOVELS_DIR = REPO_ROOT / "novels"
-
-# context file -> top-level key holding the mapping of entries
-AVOID_SOURCES = {
-    "terminology.yaml": "terms",
-    "locations.yaml": "locations",
-    "factions.yaml": "factions",
-    "cultivation_system.yaml": None,  # nested; handled specially
-}
+try:
+    from . import context as ctx
+except ImportError:
+    import context as ctx  # type: ignore
 
 
 @dataclass
@@ -41,38 +34,31 @@ class Finding:
     line: str
 
 
+def _walk_avoid_entries(node):
+    """Recursively yield (preferred, [banned...]) from any dict that carries an `avoid` list.
+
+    Structure-agnostic: it does not care which file, top-level key, genre, or nesting an entry
+    lives in, so new context files (any language, any genre) work with no code change. An entry is
+    any dict with an `avoid` list; its canonical form is `preferred` or `english`.
+    """
+    if isinstance(node, dict):
+        avoid = node.get("avoid")
+        if isinstance(avoid, list) and avoid:
+            preferred = node.get("preferred") or node.get("english") or "?"
+            yield preferred, [b for b in avoid if isinstance(b, str)]
+        for value in node.values():
+            yield from _walk_avoid_entries(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _walk_avoid_entries(item)
+
+
 def _iter_avoid_pairs(novel: str):
-    """Yield (preferred, banned_variant) pairs from the novel's context files."""
-    ctx = NOVELS_DIR / novel / "context"
-
-    for fname, key in AVOID_SOURCES.items():
-        path = ctx / fname
-        if not path.exists():
-            continue
+    """Yield (preferred, banned_variant) pairs from every context YAML the novel has."""
+    for path in ctx.context_files(novel):
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-
-        if fname == "cultivation_system.yaml":
-            for section in ("realms", "techniques", "concepts"):
-                block = data.get(section)
-                if isinstance(block, dict):
-                    entries = block.values()
-                elif isinstance(block, list):
-                    entries = block
-                else:
-                    continue
-                for entry in entries:
-                    if isinstance(entry, dict):
-                        preferred = entry.get("english") or entry.get("preferred") or "?"
-                        for banned in entry.get("avoid", []) or []:
-                            yield preferred, banned
-            continue
-
-        entries = data.get(key, {}) or {}
-        for entry in entries.values():
-            if not isinstance(entry, dict):
-                continue
-            preferred = entry.get("preferred") or entry.get("english") or "?"
-            for banned in entry.get("avoid", []) or []:
+        for preferred, banned_list in _walk_avoid_entries(data):
+            for banned in banned_list:
                 yield preferred, banned
 
 
@@ -80,7 +66,8 @@ def check_text(text: str, chapter_file: str, avoid_pairs) -> list[Finding]:
     findings: list[Finding] = []
     for line_no, line in enumerate(text.splitlines(), start=1):
         for preferred, banned in avoid_pairs:
-            # Word-boundary match, case-insensitive, for latin variants; plain substring for CJK.
+            # Word-boundary, case-insensitive match for ASCII variants; substring match for
+            # non-ASCII scripts (Chinese, Hangul, etc.) where word boundaries do not apply.
             if banned.isascii():
                 pattern = r"\b" + re.escape(banned) + r"\b"
                 hit = re.search(pattern, line, re.IGNORECASE)
@@ -93,11 +80,10 @@ def check_text(text: str, chapter_file: str, avoid_pairs) -> list[Finding]:
 
 def check_novel(novel: str, chapter: int | None = None) -> list[Finding]:
     avoid_pairs = list(_iter_avoid_pairs(novel))
-    translated = NOVELS_DIR / novel / "translated"
     if chapter is not None:
-        files = [translated / f"ch{chapter:04d}_en.md"]
+        files = [ctx.translated_path(novel, chapter)]
     else:
-        files = sorted(translated.glob("ch*_en.md"))
+        files = ctx.list_translated_chapters(novel)
 
     findings: list[Finding] = []
     for path in files:

@@ -1,7 +1,10 @@
 title_source: 青云问道
 title_english: Asking the Way at Azure Cloud
 slug: sample-novel
-source_language: zh        # zh now; ko planned. Prompts read this to pick source-language rules.
+# Language pair for this novel. The core is language-neutral: source/target drive the source and
+# translated filename suffixes (ch0001_zh.txt -> ch0001_en.md) and select the source-language
+# guidance overlay at prompts/languages/<source_language>.md (zh ships; ko planned).
+source_language: zh
 target_language: en
 genre: xianxia
 # Pointer to the prose voice for this novel.

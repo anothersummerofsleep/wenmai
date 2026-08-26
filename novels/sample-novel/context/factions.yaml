@@ -1,7 +1,7 @@
 # Sects, clans, organizations, and their internal ranks.
 factions:
   azure_cloud_sect:
-    chinese: 青云宗
+    source: 青云宗
     english: Azure Cloud Sect
     avoid:
       - Qingyun Sect

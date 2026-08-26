@@ -2,7 +2,7 @@
 # not deviate from `english`, aliases, or translation_notes.
 characters:
   li_yun:
-    chinese: 李云
+    source: 李云
     english: Li Yun
     aliases: []
     role: protagonist, outer-sect disciple
@@ -14,7 +14,7 @@ characters:
       - Do not translate 云 in his name as "Cloud"; keep it romanized as "Yun".
 
   zhang_shixiong:
-    chinese: 张师兄
+    source: 张师兄
     english: Senior Brother Zhang
     aliases: []
     role: senior disciple
@@ -27,7 +27,7 @@ characters:
         just "Zhang".
 
   elder_qingxu:
-    chinese: 清虚长老
+    source: 清虚长老
     english: Elder Qingxu
     aliases:
       - the elder

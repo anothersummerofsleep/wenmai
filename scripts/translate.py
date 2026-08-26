@@ -37,9 +37,16 @@ def run(novel: str, chapter: int, backend_name: str | None, force: bool) -> int:
     # Pass 1: assemble context.
     print(f"[pass 1] retrieving context for {novel} ch{chapter:04d} "
           f"(+{prev_n} previous chapters)...")
-    system = context.load_prompt("translate.md").replace(
-        "{SOURCE_LANGUAGE}", context.load_novel_config(novel).get("source_language", "zh")
-    ).replace("{N}", str(prev_n))
+    src_lang = context.source_language(novel)
+    tgt_lang = context.target_language(novel)
+    system = (context.load_prompt("translate.md")
+              .replace("{SOURCE_LANGUAGE}", src_lang)
+              .replace("{TARGET_LANGUAGE}", tgt_lang)
+              .replace("{N}", str(prev_n)))
+    # Append language-specific linguistic guidance if an overlay exists for this source language.
+    overlay = context.load_language_prompt(src_lang)
+    if overlay:
+        system += f"\n\n---\n\n# Source-language guidance ({src_lang})\n\n{overlay}"
     user = context.assemble_translation_context(novel, chapter, prev_n)
 
     # Pass 2: translate + annotate.
