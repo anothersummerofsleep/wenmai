@@ -166,7 +166,7 @@ zero-padded 5-digit chapter number and `<language>` is the novel's `source_langu
 
 ```
 source/ch00001_zh.txt   translated/ch00001_en.md
-source/ch0002_zh.txt   translated/ch0002_en.md
+source/ch00002_zh.txt   translated/ch00002_en.md
 ```
 
 The pipeline resolves chapters by this exact pattern (no arbitrary filename ingestion).

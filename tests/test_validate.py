@@ -72,6 +72,18 @@ def test_require_first_seen_flags_unparsable(make_novel):
     assert any("first_seen" in i.message and i.severity == "error" for i in strict)
 
 
+def test_require_first_seen_rejects_parsable_but_non_canonical(make_novel):
+    # Values the lenient parser could read (integer 7, 'ch1') are still rejected: benchmark
+    # state must use the canonical serialized form chNNNNN exactly.
+    novel = make_novel(contexts={
+        "characters.yaml": ("characters:\n"
+                            "  a:\n    english: A\n    first_seen: 7\n"
+                            "  b:\n    english: B\n    first_seen: ch1\n")})
+    strict = validate.validate_novel(novel, require_first_seen=True)
+    flagged = [i for i in strict if "first_seen" in i.message and i.severity == "error"]
+    assert len(flagged) == 2
+
+
 def test_require_first_seen_accepts_tagged_records(make_novel):
     novel = make_novel(
         contexts={"characters.yaml":

@@ -185,17 +185,24 @@ def _validate_filenames(novel: str, src: str | None, tgt: str | None, issues: li
                                     "warning"))
 
 
+# Canonical serialized first_seen form for benchmark state: exactly chNNNNN (5+ digits).
+# The internal parser (context._first_seen_chapter) stays permissive for general use; benchmark
+# validation demands the canonical serialization so bounding never depends on lenient parsing.
+FIRST_SEEN_CANONICAL_RE = re.compile(r"^ch\d{5,}$")
+
+
 def _first_seen_ok(value) -> bool:
-    """True if `first_seen` is present and parses to a chapter (canonical form is chNNNNN)."""
-    return context._first_seen_chapter(value) is not None
+    """True if `first_seen` is in the canonical serialized form chNNNNN (e.g. 'ch00001')."""
+    return isinstance(value, str) and bool(FIRST_SEEN_CANONICAL_RE.match(value))
 
 
 def _validate_first_seen(novel: str, issues: list[Issue]) -> None:
-    """Every durable record must carry a parsable `first_seen` so chapter-bounding can apply.
+    """Every durable record must carry a canonical `first_seen` so chapter-bounding can apply.
 
     Structural, not a rigid schema: a "record" is a direct child entry of a top-level category
     mapping, or a mapping item in a top-level list. Nested sub-mappings (relationships, etc.) are not
     required to carry first_seen. This underpins the benchmark's chapter-bounded-knowledge invariant.
+    The value must match ^ch\\d{5,}$ exactly (canonical serialization), not merely be parsable.
     """
     for path in context.context_files(novel):
         rel = f"context/{path.name}"
@@ -218,8 +225,9 @@ def _validate_first_seen(novel: str, issues: list[Issue]) -> None:
                     issues.append(Issue(rel, locator, "record is missing 'first_seen' "
                                         "(required for chapter-bounding; use chNNNNN)", "error"))
                 elif not _first_seen_ok(rec.get("first_seen")):
-                    issues.append(Issue(rel, locator, f"unparsable 'first_seen' "
-                                        f"{rec.get('first_seen')!r} (use chNNNNN)", "error"))
+                    issues.append(Issue(rel, locator, f"non-canonical 'first_seen' "
+                                        f"{rec.get('first_seen')!r} (must match chNNNNN, "
+                                        "e.g. ch00001)", "error"))
 
     tm = context.novel_dir(novel) / "translation_memory" / "phrases.jsonl"
     if tm.exists():
@@ -234,8 +242,8 @@ def _validate_first_seen(novel: str, issues: list[Issue]) -> None:
             if not isinstance(obj, dict):
                 continue
             if not _first_seen_ok(obj.get("first_seen")):
-                issues.append(Issue(rel, f"line {lineno}", "missing or unparsable 'first_seen' "
-                                    "(required for chapter-bounding; use chNNNNN)", "error"))
+                issues.append(Issue(rel, f"line {lineno}", "missing or non-canonical 'first_seen' "
+                                    "(must match chNNNNN, e.g. ch00001)", "error"))
 
 
 def validate_novel(novel: str, *, require_first_seen: bool = False) -> list[Issue]:
