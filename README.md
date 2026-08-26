@@ -1,19 +1,53 @@
-# Wenmai · 文脉
+# Wenmai / 文脉
 
-**Context-aware Chinese-to-English webnovel translation with terminology consistency, narrative
-memory, and inline wordplay explanations.**
+**Translate the words. Preserve the thread.**
 
-> 文脉 (wénmài): the literary thread of meaning and continuity that runs through a text. This tool
-> tries to keep that thread intact across an entire novel, not just one chapter at a time.
+Wenmai is an open-source framework for context-aware long-form webnovel translation, starting with
+Chinese-to-English translation.
 
-A version-controlled fan-translation pipeline for web novels. It treats a novel as a
-long-running translation project with a persistent **translator's notebook**, not a stack of
-isolated chapter jobs. The goal is *good fan translation with translator intelligence*, not raw
-machine translation: it keeps context across hundreds of chapters, enforces consistent
-terminology, and annotates wordplay in brackets only when a note actually earns its place.
+Webnovels can span hundreds or thousands of chapters. Understanding a single sentence may depend on
+events, relationships, terminology, jokes, titles, or translation choices established hundreds of
+chapters earlier. Wenmai is designed around that problem.
 
-Source language for v1 is Chinese (`zh`). The structure is built so Korean (`ko`) slots in later
-without a rewrite.
+Rather than translating each chapter in isolation, Wenmai maintains persistent knowledge of the
+story, including characters, aliases, relationships, factions, locations, terminology, abilities,
+historical events, recurring jokes, and established translation decisions.
+
+Its goal is not simply to produce fluent English. It is to preserve the meaning carried between the
+lines.
+
+When wordplay, idioms, homophones, cultural references, names, deliberate ambiguity, or other
+linguistic details cannot survive naturally in translation, Wenmai can preserve readable prose while
+providing concise contextual explanations where they genuinely matter.
+
+Chinese-to-English is Wenmai's first supported translation path. The underlying architecture is
+intended to support additional source languages over time, with language-specific linguistic
+intelligence separated from the shared translation, context, memory, retrieval, consistency, and
+evaluation systems.
+
+The aim is to combine the consistency of a maintained translation project with the contextual
+awareness of a human translator who has actually read the story.
+
+See [MISSION.md](MISSION.md) for the fuller mission.
+
+## Core principles
+
+- **Context before translation.** Chapters should be translated with relevant narrative and
+  linguistic history, not as isolated text.
+- **Consistency across long-running stories.** Names, titles, techniques, locations, ranks,
+  factions, relationships, and recurring terminology should remain coherent across hundreds or
+  thousands of chapters.
+- **Meaning over literalism.** English should read naturally without silently discarding information
+  carried by the source language.
+- **Explain what cannot be translated.** Wordplay, idioms, cultural references, double meanings, and
+  other significant linguistic details can be preserved through concise annotations when necessary.
+- **Language-aware, not language-bound.** Wenmai begins with Chinese-to-English translation, while
+  keeping language-specific linguistic concerns separate from the core translation framework.
+- **Human-reviewable by design.** Translation decisions, terminology changes, contextual knowledge,
+  annotations, and chapter revisions should remain inspectable and version-controlled.
+
+Wenmai treats translation not as sentence substitution, but as the preservation of a story's 文脉,
+the thread of meaning and continuity running through the work.
 
 **It is a tool, not a content repo.** Clone it, run it on your own machine, and point it at your
 own novels. Your novels and translations live under `novels/` and are git-ignored by default, so
