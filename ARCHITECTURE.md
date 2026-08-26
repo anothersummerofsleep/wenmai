@@ -20,10 +20,26 @@ config-driven behaviour and a couple of conventions.
 
 **Language-specific layer** (its own linguistics, kept out of the core):
 - `prompts/languages/<source_language>.md` — the source-language guidance overlay (chengyu,
-  homophones, classical references, naming conventions for `zh`; honorifics, hanja, etc. for a
-  future `ko`). Appended to the core prompt at runtime when it exists.
+  homophones, classical references, naming conventions for `zh`; honorifics, speech levels, kinship
+  address, hanja for a future `ko`). Appended to the core prompt at runtime when it exists.
 - Optional novel/genre context files (e.g. `cultivation_system.yaml`) — loaded automatically
   because the core reads *whatever* `*.yaml` a novel places in `context/`.
+
+### Why the split has to hold (a standing constraint)
+
+This boundary is a design constraint on all future work, not a formality. Different source languages
+carry meaning through different machinery, and that machinery must not accrete in the shared core.
+
+Korean is the worked example. Adding Korean to English will bring concerns Chinese does not have:
+honorifics and speech levels (존댓말 / 반말), kinship-based forms of address, and Sino-Korean (hanja)
+vocabulary whose nuance parallels but does not equal Chinese. All of that belongs in
+`prompts/languages/ko.md` and, where a category genuinely needs structured data, in ko-specific
+`context/*.yaml` files a novel opts into. None of it belongs in `context.py`, `translate.py`,
+`consistency_check.py`, `build_context.py`, or the record schema.
+
+The test for any change: **if it encodes how one specific source language works, it goes in the
+language layer.** If adding a language would require editing the core or the schema, that is a leak
+in the boundary to be fixed, not a feature to accept.
 
 ## Extension points (the whole list)
 
