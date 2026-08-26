@@ -450,6 +450,11 @@ def main() -> int:
             agg = analyze_run(args.benchmark, args.run)
             print(yaml.safe_dump(agg, allow_unicode=True, sort_keys=False))
             return 0
+    except backends.PendingHandoff as handoff:
+        # claude_code backend: a prompt was written and awaits its response file. Progress is kept
+        # (existing responses are re-read), so re-running the same command continues the run.
+        print(str(handoff))
+        return 2
     except (FileNotFoundError, ValueError, RuntimeError) as err:
         print(f"[error] {err}")
         return 1
