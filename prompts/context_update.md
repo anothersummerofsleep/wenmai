@@ -40,14 +40,27 @@ world facts.
 A single new idiom can legitimately produce BOTH: a `terms` record (its canonical rendering) and a
 `translation_memory` line (how to keep annotating it). Propose each in its correct section.
 
+## Every durable record MUST carry `first_seen`
+Give every canonical record and every translation-memory entry a `first_seen` field: the chapter in
+which this information was FIRST LEARNED from the text you are given, written in the canonical
+five-digit form `chNNNNN` (e.g. `first_seen: ch00001`, `first_seen: ch00042`).
+
+- This means the chapter where Wenmai first learned the information, NOT the fictional chronology of
+  the event it describes.
+- It applies to characters, terminology, locations, factions, organizations, abilities,
+  relationships and relationship changes, worldbuilding records, translation-memory entries, and any
+  other durable extracted record.
+- It is what lets earlier chapters stay unaffected by later discoveries, so it must never be omitted
+  and must be parsable.
+
 ## What to extract
 Canonical (store A):
 - New characters (source, english, aliases, role, speech_style, first_seen, relationships).
 - New or refined terminology / abilities (source, preferred english, avoid-variants, short
-  explanation), especially anything that must stay consistent later.
-- New locations and factions.
+  explanation, first_seen), especially anything that must stay consistent later.
+- New locations, factions, organizations, worldbuilding records (with first_seen).
 - New timeline beats (one terse line each, tagged with the chapter).
-- Relationship changes between existing characters.
+- Relationship changes between existing characters (with first_seen).
 
 Translation memory (store B):
 - New recurring idioms / jokes / wordplay (source, gloss, kind, first_seen, handling, note_text).

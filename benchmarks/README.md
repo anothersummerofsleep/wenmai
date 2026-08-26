@@ -62,7 +62,7 @@ Condition C additionally accumulates **canonical state**, human-reviewed:
 source chapter + C's translation + existing C state
   -> extraction proposal (scripts/build_context.py)
   -> HUMAN review
-  -> accepted entries (each tagged first_seen: chNNNN) into state/context/*.yaml and
+  -> accepted entries (each tagged first_seen: chNNNNN) into state/context/*.yaml and
      state/translation_memory/phrases.jsonl
   -> used when translating the next chapter
 ```
@@ -84,7 +84,7 @@ knowledge into a chapter's prompt:
   even if you re-generate an earlier chapter.
 
 For this guarantee to hold, **every curated context record and translation-memory entry must carry a
-`first_seen: chNNNN`** marking the chapter it was first learned. The extraction proposal fills this
+`first_seen: chNNNNN`** marking the chapter it was first learned. The extraction proposal fills this
 in; keep it when you accept an entry. An entry with no `first_seen` cannot be chapter-bounded and
 will be visible to all chapters, so do not omit it. (The source chapter itself is always in the
 prompt, so chapter *i* still sees everything its own source states; bounding only governs the
@@ -105,17 +105,17 @@ deliberately not an evaluation metric.
   state/                         a normal Wenmai novel
     novel.yaml                   source_language / target_language (required)
     style_guide.md               target prose voice
-    source/    ch0001_zh.txt ...  (you supply)
+    source/    ch00001_zh.txt ...  (you supply)
     context/   *.yaml            (you curate as you read; C's canonical state)
     translation_memory/phrases.jsonl
-  reference/   ch0001_en.md ...  official translation (eval only, NEVER prompted)
+  reference/   ch00001_en.md ...  official translation (eval only, NEVER prompted)
   runs/<run_id>/
-    _histories/<A|B|C>/ch0001_en.md ...  per-condition accumulating output (A keeps none)
-    ch0001/
+    _histories/<A|B|C>/ch00001_en.md ...  per-condition accumulating output (A keeps none)
+    ch00001/
       candidate_1.md candidate_2.md candidate_3.md   (blinded)
       deterministic.yaml     (objective checks per candidate)
       eval_blank.yaml        (copy to eval_filled.yaml and score)
-    _blinding/ch0001.json    (label -> condition; kept out of the candidate view)
+    _blinding/ch00001.json    (label -> condition; kept out of the candidate view)
     analysis.yaml            (written by `analyze`, after unblinding)
 ```
 

@@ -11,7 +11,7 @@ terms:
       # distinctive variants (misspellings, alternate romanizations, competing coined names).
     explanation: >
       Cultivation life-energy. Kept romanized as "qi". Note that 气 also carries "temper/anger" and
-      "cockiness", which drives the ch0001 wordplay; flag such double meanings rather than collapsing
+      "cockiness", which drives the ch00001 wordplay; flag such double meanings rather than collapsing
       them to one word.
 
   dao_xin:
@@ -42,4 +42,4 @@ terms:
       - old vixen
     explanation: >
       Idiom for a shrewd, cunning, experienced person. On first appearance keep the Chinese inline
-      plus a translator's note (see ch0001); later appearances need only "old fox".
+      plus a translator's note (see ch00001); later appearances need only "old fox".

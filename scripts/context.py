@@ -91,14 +91,25 @@ def target_language(novel: str) -> str:
     return _require_language(novel, "target_language")
 
 
+# Canonical chapter identifier: five digits, zero-padded (chNNNNN). Chapter number stays an integer
+# internally; this is only the serialization/filename form. Comfortable room for very long works
+# (up to ch99999); numbers above that widen gracefully rather than truncating.
+CHAPTER_ID_DIGITS = 5
+
+
+def chapter_id(chapter: int) -> str:
+    """Canonical five-digit chapter id: chapter_id(1) == 'ch00001', chapter_id(10000) == 'ch10000'."""
+    return f"ch{chapter:0{CHAPTER_ID_DIGITS}d}"
+
+
 def source_path(novel: str, chapter: int) -> Path:
-    """Source file, named by the novel's source language, e.g. ch0001_zh.txt or ch0001_ko.txt."""
-    return novel_dir(novel) / "source" / f"ch{chapter:04d}_{source_language(novel)}.txt"
+    """Source file, named by the novel's source language, e.g. ch00001_zh.txt or ch00001_ko.txt."""
+    return novel_dir(novel) / "source" / f"{chapter_id(chapter)}_{source_language(novel)}.txt"
 
 
 def translated_path(novel: str, chapter: int) -> Path:
-    """Translated file, named by the novel's target language, e.g. ch0001_en.md."""
-    return novel_dir(novel) / "translated" / f"ch{chapter:04d}_{target_language(novel)}.md"
+    """Translated file, named by the novel's target language, e.g. ch00001_en.md."""
+    return novel_dir(novel) / "translated" / f"{chapter_id(chapter)}_{target_language(novel)}.md"
 
 
 def read_source(novel: str, chapter: int) -> str:
@@ -149,7 +160,7 @@ _DROP = object()  # sentinel: a node pruned by chapter-bounding
 
 
 def _first_seen_chapter(value) -> int | None:
-    """Chapter number from a `first_seen` value (`ch0007`, `7`, `"chapter 7"`), or None."""
+    """Chapter number from a `first_seen` value (`ch00007`, `7`, `"chapter 7"`), or None."""
     if isinstance(value, bool):
         return None
     if isinstance(value, int):

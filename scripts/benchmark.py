@@ -33,7 +33,7 @@ Local layout (all git-ignored):
     .local/benchmarks/<id>/
       state/            a normal Wenmai novel: novel.yaml, style_guide.md, source/, context/,
                         translation_memory/, translated/ (C's accumulating outputs)
-      reference/        official translation, chNNNN_<tgt>.md (eval only, never prompted)
+      reference/        official translation, chNNNNN_<tgt>.md (eval only, never prompted)
       runs/<run_id>/    blinded candidates + eval templates + deterministic scores + analysis
 
 Usage:
@@ -53,9 +53,9 @@ from datetime import datetime
 import yaml
 
 try:
-    from . import backends, consistency_check, context, translate
+    from . import backends, build_context, consistency_check, context, translate, validate
 except ImportError:
-    import backends, consistency_check, context, translate  # type: ignore
+    import backends, build_context, consistency_check, context, translate, validate  # type: ignore
 
 # The nine evaluation dimensions. All scored 1-5 where 5 is best; for
 # hallucination_or_embellishment, 5 means "no unsupported additions".
@@ -127,7 +127,12 @@ def parse_chapters(spec: str) -> list[int]:
 # --------------------------------------------------------------------------- checks
 
 def check_local(bid: str, chapters: list[int]) -> list[str]:
-    """Return human-readable problems with the local corpus (empty = ready)."""
+    """Return human-readable problems with the local corpus (empty = ready to generate).
+
+    Verifies: novel.yaml + a valid language pair matching the manifest; a required style_guide.md;
+    every source chapter present under the five-digit convention; and that the existing persistent
+    state passes validation, including chapter-bounding metadata (first_seen). Reuses validate.py.
+    """
     _use_state_novel(bid)
     problems: list[str] = []
     state = local_root(bid) / STATE_NOVEL
@@ -138,17 +143,39 @@ def check_local(bid: str, chapters: list[int]) -> list[str]:
         return problems  # can't resolve chapter filenames without the language pair
 
     try:
-        context.source_language(STATE_NOVEL)
-        context.target_language(STATE_NOVEL)
+        src = context.source_language(STATE_NOVEL)
+        tgt = context.target_language(STATE_NOVEL)
     except context.ConfigError as err:
         problems.append(str(err).splitlines()[0])
         return problems
+
+    # Language pair must match the manifest (so the corpus is what the benchmark expects).
+    pair = (load_manifest(bid).get("language_pair") or {})
+    if pair.get("source") and pair["source"] != src:
+        problems.append(f"source_language '{src}' does not match manifest "
+                        f"language_pair.source '{pair['source']}'")
+    if pair.get("target") and pair["target"] != tgt:
+        problems.append(f"target_language '{tgt}' does not match manifest "
+                        f"language_pair.target '{pair['target']}'")
+
+    # A style guide is required so every condition shares the same prose voice.
+    cfg = context.load_novel_config(STATE_NOVEL)
+    style = state / cfg.get("style_guide", "style_guide.md")
+    if not style.exists():
+        problems.append(f"missing required style guide {context.display_path(style)}")
 
     for ch in chapters:
         expected = context.source_path(STATE_NOVEL, ch)
         if not expected.exists():
             problems.append(f"missing source chapter {ch}: expected "
                             f"{context.display_path(expected)}")
+
+    # Persistent state must validate (YAML/JSONL well-formed, first_seen present and parsable).
+    for issue in validate.validate_novel(STATE_NOVEL, require_first_seen=True):
+        if issue.severity == "error":
+            problems.append(f"invalid state: {issue.file}"
+                            + (f" [{issue.locator}]" if issue.locator else "")
+                            + f": {issue.message}")
     return problems
 
 
@@ -167,7 +194,7 @@ def _read_history(run_dir, cond: str, chapter: int, n: int, tgt: str) -> list[tu
     d = _history_dir(run_dir, cond)
     out: list[tuple[int, str]] = []
     for prev in range(max(1, chapter - n), chapter):
-        p = d / f"ch{prev:04d}_{tgt}.md"
+        p = d / f"{context.chapter_id(prev)}_{tgt}.md"
         if p.exists():
             out.append((prev, p.read_text(encoding="utf-8")))
     return out
@@ -176,7 +203,7 @@ def _read_history(run_dir, cond: str, chapter: int, n: int, tgt: str) -> list[tu
 def _write_history(run_dir, cond: str, chapter: int, tgt: str, text: str) -> None:
     d = _history_dir(run_dir, cond)
     d.mkdir(parents=True, exist_ok=True)
-    (d / f"ch{chapter:04d}_{tgt}.md").write_text(text, encoding="utf-8")
+    (d / f"{context.chapter_id(chapter)}_{tgt}.md").write_text(text, encoding="utf-8")
 
 
 def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
@@ -205,7 +232,7 @@ def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
         # seen at or after i, so a fact learned in a later chapter can never leak backwards.
         user = context.assemble_translation_context(
             novel, chapter, prev_n, previous=prev, context_max_chapter=chapter, **flags)
-        tag = f"benchmark/{bid}/{run_id}/ch{chapter:04d}/{cond}"
+        tag = f"benchmark/{bid}/{run_id}/{context.chapter_id(chapter)}/{cond}"
         outputs[cond] = backend.complete(system, user, tag=tag).rstrip() + "\n"
 
     # Accumulate histories. C always keeps its own; B keeps its own only in independent mode
@@ -222,7 +249,7 @@ def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
     label_to_cond = dict(zip(labels, conds))
 
     run_dir = local_root(bid) / "runs" / run_id
-    ch_dir = run_dir / f"ch{chapter:04d}"
+    ch_dir = run_dir / context.chapter_id(chapter)
     ch_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "_blinding").mkdir(parents=True, exist_ok=True)
 
@@ -231,7 +258,7 @@ def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
         (ch_dir / f"candidate_{label}.md").write_text(outputs[cond], encoding="utf-8")
         deterministic[label] = deterministic_scores(outputs[cond])
 
-    (run_dir / "_blinding" / f"ch{chapter:04d}.json").write_text(
+    (run_dir / "_blinding" / f"{context.chapter_id(chapter)}.json").write_text(
         json.dumps(label_to_cond, indent=2), encoding="utf-8")
     (ch_dir / "deterministic.yaml").write_text(
         yaml.safe_dump(deterministic, allow_unicode=True, sort_keys=True), encoding="utf-8")
@@ -246,9 +273,31 @@ def generate(bid: str, chapters: list[int], backend_name: str | None, run_id: st
         raise FileNotFoundError("benchmark corpus not ready:\n  - " + "\n  - ".join(problems))
     backend = backends.get_backend(backend_name, backends.load_config())
     for ch in chapters:
-        print(f"[benchmark] generating ch{ch:04d} (A/B/C, mode={mode}) via '{backend.name}'...")
+        print(f"[benchmark] generating {context.chapter_id(ch)} (A/B/C, mode={mode}) "
+              f"via '{backend.name}'...")
         generate_chapter(bid, ch, backend, run_id, seed, mode=mode)
     print(f"[benchmark] done. Candidates under {context.display_path(local_root(bid) / 'runs' / run_id)}")
+
+
+# --------------------------------------------------------------------------- C state-update bridge
+
+def propose(bid: str, run_id: str, chapter: int, backend_name: str | None) -> int:
+    """Run context extraction for Condition C's translation of one chapter (the C state-update step).
+
+    Feeds the original source chapter + Condition C's translation for that run + the existing
+    canonical C state through prompts/context_update.md (reusing build_context), and writes a
+    proposal to state/context/_proposals/chNNNNN.yaml. It NEVER touches state/context/*.yaml,
+    translation_memory/phrases.jsonl, or the reference translation; a human reviews and applies.
+    """
+    novel = _use_state_novel(bid)
+    tgt = context.target_language(novel)
+    run_dir = local_root(bid) / "runs" / run_id
+    c_translation = _history_dir(run_dir, "C") / f"{context.chapter_id(chapter)}_{tgt}.md"
+    if not c_translation.exists():
+        raise FileNotFoundError(
+            f"no Condition C translation for chapter {chapter} in run '{run_id}' "
+            f"(expected {context.display_path(c_translation)}). Generate the chapter first.")
+    return build_context.run(novel, chapter, backend_name, translation_path=c_translation)
 
 
 # --------------------------------------------------------------------------- deterministic eval
@@ -363,6 +412,12 @@ def main() -> int:
                        help="independent (default): B and C keep separate histories (end-to-end "
                             "comparison). shared_c: B and C share C's history (per-chapter ablation).")
 
+    p_prop = sub.add_parser("propose", help="extract a Condition C context proposal for review")
+    p_prop.add_argument("--benchmark", required=True)
+    p_prop.add_argument("--run", required=True)
+    p_prop.add_argument("--chapter", type=int, required=True)
+    p_prop.add_argument("--backend", default=None)
+
     p_an = sub.add_parser("analyze", help="unblind and aggregate results")
     p_an.add_argument("--benchmark", required=True)
     p_an.add_argument("--run", required=True)
@@ -387,6 +442,9 @@ def main() -> int:
             generate(args.benchmark, parse_chapters(args.chapters), args.backend, run_id,
                      args.seed, mode=args.mode)
             return 0
+        if args.cmd == "propose":
+            load_manifest(args.benchmark)
+            return propose(args.benchmark, args.run, args.chapter, args.backend)
         if args.cmd == "analyze":
             load_manifest(args.benchmark)
             agg = analyze_run(args.benchmark, args.run)

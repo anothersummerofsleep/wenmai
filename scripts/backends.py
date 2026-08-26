@@ -55,7 +55,7 @@ class LLMBackend(ABC):
     def complete(self, system: str, user: str, *, tag: str) -> str:
         """Return the model's text completion for (system, user).
 
-        `tag` is a short slug like 'novel/ch0001/translate' used for handoff filenames and logs.
+        `tag` is a short slug like 'novel/ch00001/translate' used for handoff filenames and logs.
         """
         raise NotImplementedError
 

@@ -57,6 +57,31 @@ def test_translation_memory_missing_source_is_an_error(make_novel):
     assert any("source" in e.message for e in errs)
 
 
+def test_require_first_seen_flags_missing_record(make_novel):
+    novel = make_novel(contexts={"characters.yaml": "characters:\n  a:\n    english: A\n"})
+    strict = validate.validate_novel(novel, require_first_seen=True)
+    assert any("first_seen" in i.message and i.severity == "error" for i in strict)
+    # Lenient (default) does not require it, so general novels stay unaffected.
+    assert not any("first_seen" in i.message for i in validate.validate_novel(novel))
+
+
+def test_require_first_seen_flags_unparsable(make_novel):
+    novel = make_novel(contexts={
+        "characters.yaml": "characters:\n  a:\n    english: A\n    first_seen: soon\n"})
+    strict = validate.validate_novel(novel, require_first_seen=True)
+    assert any("first_seen" in i.message and i.severity == "error" for i in strict)
+
+
+def test_require_first_seen_accepts_tagged_records(make_novel):
+    novel = make_novel(
+        contexts={"characters.yaml":
+                  "characters:\n  a:\n    english: A\n    first_seen: ch00001\n"},
+        phrases=['{"source": "x", "gloss": "y", "first_seen": "ch00002"}'],
+    )
+    strict = validate.validate_novel(novel, require_first_seen=True)
+    assert not any("first_seen" in i.message for i in strict)
+
+
 def test_nonconforming_chapter_filename_is_a_warning(make_novel, novels_dir):
     novel = make_novel(sources={1: "内容"})
     # Drop a mis-named chapter-ish file into source/.

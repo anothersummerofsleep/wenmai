@@ -12,12 +12,29 @@ def test_reads_explicit_languages(make_novel):
 
 def test_source_path_derives_from_source_language(make_novel):
     novel = make_novel(config={"source_language": "ko", "target_language": "en"})
-    assert context.source_path(novel, 1).name == "ch0001_ko.txt"
+    assert context.source_path(novel, 1).name == "ch00001_ko.txt"
 
 
 def test_translated_path_derives_from_target_language(make_novel):
     novel = make_novel(config={"source_language": "zh", "target_language": "fr"})
-    assert context.translated_path(novel, 7).name == "ch0007_fr.md"
+    assert context.translated_path(novel, 7).name == "ch00007_fr.md"
+
+
+@pytest.mark.parametrize("chapter,expected", [
+    (1, "ch00001"),
+    (10, "ch00010"),
+    (9999, "ch09999"),
+    (10000, "ch10000"),   # above 9,999: still five digits, no truncation
+    (99999, "ch99999"),
+])
+def test_chapter_id_is_five_digit(chapter, expected):
+    assert context.chapter_id(chapter) == expected
+
+
+def test_source_path_handles_chapter_above_9999(make_novel):
+    novel = make_novel(config={"source_language": "zh", "target_language": "en"})
+    assert context.source_path(novel, 10000).name == "ch10000_zh.txt"
+    assert context.translated_path(novel, 10000).name == "ch10000_en.md"
 
 
 def test_missing_novel_yaml_raises(make_novel):

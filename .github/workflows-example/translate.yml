@@ -4,7 +4,7 @@
 # which needs an ANTHROPIC_API_KEY repo secret and per-token billing. Enable it deliberately, once
 # you have decided to run unattended: uncomment the triggers below and add the secret.
 #
-# When enabled, the intended flow is: push new source chapters (source/ch####_<src>.txt, where
+# When enabled, the intended flow is: push new source chapters (source/ch#####_<src>.txt, where
 # <src> is the novel's source_language) -> CI translates the new chapters -> opens a pull request
 # with the translated Markdown, updated proposals, and the consistency-check summary in the PR body,
 # for you to review and merge.

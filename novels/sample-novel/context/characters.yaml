@@ -9,7 +9,7 @@ characters:
     speech_style: cautious, defers to seniors, wary
     relationships:
       elder_qingxu: addressed as a sect elder
-    first_seen: ch0001
+    first_seen: ch00001
     translation_notes:
       - Do not translate 云 in his name as "Cloud"; keep it romanized as "Yun".
 
@@ -21,7 +21,7 @@ characters:
     speech_style: unknown (no dialogue yet)
     relationships:
       li_yun: senior of
-    first_seen: ch0001
+    first_seen: ch00001
     translation_notes:
       - 师兄 renders as "Senior Brother", per style_guide honorific table. Keep it, do not drop to
         just "Zhang".
@@ -35,7 +35,7 @@ characters:
     speech_style: measured, indirect, fond of double meanings
     relationships:
       li_yun: tests / observes
-    first_seen: ch0001
+    first_seen: ch00001
     translation_notes:
-      - Name not yet stated in-text as of ch0001; introduced here for continuity. Confirm romanization
+      - Name not yet stated in-text as of ch00001; introduced here for continuity. Confirm romanization
         when the source first spells it out.

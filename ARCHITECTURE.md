@@ -68,7 +68,7 @@ any real novel.
 ## Extension points (the whole list)
 
 1. **`source_language` / `target_language` in `novel.yaml`.** These drive the source and translated
-   filename suffixes (`ch0001_<src>.txt` -> `ch0001_<tgt>.md`) and select the prompt overlay. No
+   filename suffixes (`ch00001_<src>.txt` -> `ch00001_<tgt>.md`) and select the prompt overlay. No
    filename or language is hardcoded in the scripts; see `context.source_path`,
    `context.translated_path`, `context.list_translated_chapters`.
 2. **`prompts/languages/<lang>.md`.** Drop in a file named for a source language to add its
@@ -82,7 +82,7 @@ any real novel.
 ## Adding a language pair later (sketch, not yet implemented)
 
 To add, say, Korean to English:
-1. Give the novel `source_language: ko` in its `novel.yaml`; name source files `ch0001_ko.txt`.
+1. Give the novel `source_language: ko` in its `novel.yaml`; name source files `ch00001_ko.txt`.
 2. Write `prompts/languages/ko.md` with Korean-specific annotation triggers and naming rules.
 3. Seed the same `context/*.yaml` shapes (they are already language-neutral); add ko-specific
    context files if the genre needs them.

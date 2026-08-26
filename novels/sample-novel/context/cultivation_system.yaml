@@ -1,7 +1,7 @@
 # The novel's power system: realms, stages, techniques. Keep realm names and order stable across
 # the whole book; drift here is the most jarring kind for readers.
 realms:
-  # Ordered low -> high. None are named in the ch0001 sample yet; seed as the source reveals them.
+  # Ordered low -> high. None are named in the ch00001 sample yet; seed as the source reveals them.
   # Example shape:
   # - source: 炼气
   #   english: Qi Refining
@@ -16,7 +16,7 @@ techniques:
   #   source: ...
   #   english: ...
   #   avoid: [...]
-  #   first_seen: ch0000
+  #   first_seen: ch00000
 
 concepts:
   qi:

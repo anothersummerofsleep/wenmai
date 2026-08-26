@@ -82,8 +82,8 @@ See `prompts/translate.md` for the full rule.
 
 ```
 novels/<novel>/
-  source/         ch0001_<src>.txt, ...                (immutable source; suffix = source_language)
-  translated/     ch0001_<tgt>.md, ...                 (output; suffix = target_language; one PR/chapter)
+  source/         ch00001_<src>.txt, ...                (immutable source; suffix = source_language)
+  translated/     ch00001_<tgt>.md, ...                 (output; suffix = target_language; one PR/chapter)
   context/        characters.yaml terminology.yaml locations.yaml factions.yaml timeline.yaml
                   (+ any novel-specific files, e.g. cultivation_system.yaml, honorifics.yaml)
   translation_memory/phrases.jsonl                     (recurring idioms/jokes, first-seen refs)
@@ -149,7 +149,7 @@ python scripts/build_context.py --novel sample-novel --chapter 1
 
 ```bash
 mkdir -p novels/<your-novel>/{source,translated,context,translation_memory}
-# add source/ch0001_zh.txt ... , then seed context/*.yaml and style_guide.md
+# add source/ch00001_zh.txt ... , then seed context/*.yaml and style_guide.md
 # (copy sample-novel's files as templates)
 python scripts/translate.py --novel <your-novel> --chapter 1
 ```
@@ -160,12 +160,12 @@ own translations in a private fork, remove the `novels/*` lines from `.gitignore
 
 ## Chapter file convention
 
-Source and translated chapters are named `ch<NNNN>_<language>.txt` / `.md`, where `<NNNN>` is a
-zero-padded 4-digit chapter number and `<language>` is the novel's `source_language` /
+Source and translated chapters are named `ch<NNNNN>_<language>.txt` / `.md`, where `<NNNNN>` is a
+zero-padded 5-digit chapter number and `<language>` is the novel's `source_language` /
 `target_language`:
 
 ```
-source/ch0001_zh.txt   translated/ch0001_en.md
+source/ch00001_zh.txt   translated/ch00001_en.md
 source/ch0002_zh.txt   translated/ch0002_en.md
 ```
 

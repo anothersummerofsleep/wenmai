@@ -2,7 +2,7 @@ title_source: 青云问道
 title_english: Asking the Way at Azure Cloud
 slug: sample-novel
 # Language pair for this novel. The core is language-neutral: source/target drive the source and
-# translated filename suffixes (ch0001_zh.txt -> ch0001_en.md) and select the source-language
+# translated filename suffixes (ch00001_zh.txt -> ch00001_en.md) and select the source-language
 # guidance overlay at prompts/languages/<source_language>.md (zh ships; ko planned).
 source_language: zh
 target_language: en

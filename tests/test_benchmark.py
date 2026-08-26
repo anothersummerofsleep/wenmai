@@ -29,6 +29,9 @@ def bench(tmp_path, monkeypatch):
     bid = "demo"
     root = tmp_path / "bench" / bid
     monkeypatch.setattr(benchmark, "local_root", lambda b: (tmp_path / "bench" / b))
+    # A metadata-only manifest (the real one lives in benchmarks/<id>/; tests supply their own).
+    monkeypatch.setattr(benchmark, "load_manifest",
+                        lambda b: {"language_pair": {"source": "zh", "target": "en"}, "chapters": 10})
     # generate() mutates context.NOVELS_DIR; patch it so pytest restores it afterwards.
     monkeypatch.setattr(context, "NOVELS_DIR", root)
 
@@ -39,8 +42,8 @@ def bench(tmp_path, monkeypatch):
     (state / "novel.yaml").write_text(
         "source_language: zh\ntarget_language: en\ntitle_english: Demo\n", encoding="utf-8")
     (state / "style_guide.md").write_text("Voice: plain past tense.\n", encoding="utf-8")
-    (state / "source" / "ch0001_zh.txt").write_text("第一章 内容", encoding="utf-8")
-    (state / "source" / "ch0002_zh.txt").write_text("第二章 内容", encoding="utf-8")
+    (state / "source" / "ch00001_zh.txt").write_text("第一章 内容", encoding="utf-8")
+    (state / "source" / "ch00002_zh.txt").write_text("第二章 内容", encoding="utf-8")
     (state / "context" / "terminology.yaml").write_text(
         "terms:\n  qi:\n    source: 气\n    preferred: qi\n    avoid:\n      - chi\n", encoding="utf-8")
     (state / "translation_memory" / "phrases.jsonl").write_text(
@@ -60,13 +63,13 @@ def test_generate_creates_blinded_candidates(bench):
     assert set(mapping.values()) == {"A", "B", "C"}  # all three conditions present
     assert sorted(mapping.keys()) == ["1", "2", "3"]  # neutral labels
 
-    ch_dir = benchmark.local_root(bench) / "runs" / "r1" / "ch0001"
+    ch_dir = benchmark.local_root(bench) / "runs" / "r1" / "ch00001"
     for label in ("1", "2", "3"):
         assert (ch_dir / f"candidate_{label}.md").exists()
     assert (ch_dir / "deterministic.yaml").exists()
     assert (ch_dir / "eval_blank.yaml").exists()
     # Blinding is stored separately, out of the candidate view directory.
-    assert (benchmark.local_root(bench) / "runs" / "r1" / "_blinding" / "ch0001.json").exists()
+    assert (benchmark.local_root(bench) / "runs" / "r1" / "_blinding" / "ch00001.json").exists()
     assert not (ch_dir / "blinding.json").exists()
 
 
@@ -77,7 +80,7 @@ def test_conditions_include_the_right_context(bench):
     benchmark.generate_chapter(bench, 2, rec, run_id="r1", seed="s")
 
     def user_for(chapter, cond):
-        tag = f"benchmark/{bench}/r1/ch{chapter:04d}/{cond}"
+        tag = f"benchmark/{bench}/r1/{context.chapter_id(chapter)}/{cond}"
         return next(c["user"] for c in rec.calls if c["tag"] == tag)
 
     # Chapter 2 users:
@@ -95,8 +98,8 @@ def test_conditions_include_the_right_context(bench):
     assert "Translation memory" in c2
     # Independent histories (default): each condition kept its own chapter-1 output; A keeps none.
     run = benchmark.local_root(bench) / "runs" / "r1"
-    assert (run / "_histories" / "C" / "ch0001_en.md").exists()
-    assert (run / "_histories" / "B" / "ch0001_en.md").exists()
+    assert (run / "_histories" / "C" / "ch00001_en.md").exists()
+    assert (run / "_histories" / "B" / "ch00001_en.md").exists()
     assert not (run / "_histories" / "A").exists()
 
 
@@ -115,12 +118,12 @@ class MarkerBackend:
 
 
 def _user_for(rec, bid, chapter, cond):
-    tag = f"benchmark/{bid}/r1/ch{chapter:04d}/{cond}"
+    tag = f"benchmark/{bid}/r1/{context.chapter_id(chapter)}/{cond}"
     return next(c["user"] for c in rec.calls if c["tag"] == tag)
 
 
 def _add_source(bench, chapter):
-    src = benchmark.local_root(bench) / "state" / "source" / f"ch{chapter:04d}_zh.txt"
+    src = benchmark.local_root(bench) / "state" / "source" / f"{context.chapter_id(chapter)}_zh.txt"
     src.write_text(f"第{chapter}章 内容", encoding="utf-8")
 
 
@@ -133,10 +136,10 @@ def test_independent_histories_by_chapter_3(bench):
 
     b3, c3, a3 = _user_for(rec, bench, 3, "B"), _user_for(rec, bench, 3, "C"), _user_for(rec, bench, 3, "A")
     # B retrieves only B's history (ch1, ch2), never C's.
-    assert "MARKER-B-ch0001" in b3 and "MARKER-B-ch0002" in b3
+    assert "MARKER-B-ch00001" in b3 and "MARKER-B-ch00002" in b3
     assert "MARKER-C-" not in b3
     # C retrieves only C's history, never B's.
-    assert "MARKER-C-ch0001" in c3 and "MARKER-C-ch0002" in c3
+    assert "MARKER-C-ch00001" in c3 and "MARKER-C-ch00002" in c3
     assert "MARKER-B-" not in c3
     # A is stateless: no history window at all.
     assert "MARKER-" not in a3
@@ -150,14 +153,14 @@ def test_shared_c_mode_shares_c_history(bench):
     for ch in (1, 2, 3):
         benchmark.generate_chapter(bench, ch, rec, run_id="r1", seed="s", mode="shared_c")
     b3 = _user_for(rec, bench, 3, "B")
-    assert "MARKER-C-ch0002" in b3
+    assert "MARKER-C-ch00002" in b3
 
 
 def test_generation_context_is_chapter_bounded(bench):
     # A fact first learned in chapter 2 must never influence chapters < it (ch1, ch2 itself);
     # it becomes available only from chapter 3 onward.
     ctx = benchmark.local_root(bench) / "state" / "context" / "characters.yaml"
-    ctx.write_text("characters:\n  klein:\n    english: Klein\n    first_seen: ch0002\n",
+    ctx.write_text("characters:\n  klein:\n    english: Klein\n    first_seen: ch00002\n",
                    encoding="utf-8")
     _add_source(bench, 3)
     rec = MarkerBackend()
@@ -190,7 +193,7 @@ def test_analyze_unblinds_and_aggregates(bench):
         entry = {dim: by_condition[cond] for dim in benchmark.EVAL_DIMENSIONS}
         entry["comments"] = ""
         candidates[label] = entry
-    ch_dir = benchmark.local_root(bench) / "runs" / "r1" / "ch0001"
+    ch_dir = benchmark.local_root(bench) / "runs" / "r1" / "ch00001"
     (ch_dir / "eval_filled.yaml").write_text(
         yaml.safe_dump({"candidates": candidates}, allow_unicode=True), encoding="utf-8")
 
@@ -201,6 +204,31 @@ def test_analyze_unblinds_and_aggregates(bench):
     assert agg["conditions"]["C"]["human"]["faithfulness"] == 5
     # Deterministic aggregate present too.
     assert agg["conditions"]["C"]["deterministic"]["formatting_valid_rate"] == 1.0
+
+
+def test_propose_writes_reviewable_proposal_without_mutating_state(bench, monkeypatch):
+    # Generate Condition C for ch1 so a C translation exists in the run's history.
+    benchmark.generate_chapter(bench, 1, Recorder(), run_id="r1", seed="s")
+    terminology = benchmark.local_root(bench) / "state" / "context" / "terminology.yaml"
+    before = terminology.read_text(encoding="utf-8")
+    tm = benchmark.local_root(bench) / "state" / "translation_memory" / "phrases.jsonl"
+    tm_before = tm.read_text(encoding="utf-8")
+
+    # propose reuses build_context; its backend comes via get_backend.
+    monkeypatch.setattr(backends, "get_backend", lambda *a, **k: Recorder())
+    rc = benchmark.propose(bench, "r1", 1, None)
+    assert rc == 0
+
+    proposal = benchmark.local_root(bench) / "state" / "context" / "_proposals" / "ch00001.yaml"
+    assert proposal.exists()
+    # Canonical stores are NOT mutated by propose (human review remains mandatory).
+    assert terminology.read_text(encoding="utf-8") == before
+    assert tm.read_text(encoding="utf-8") == tm_before
+
+
+def test_propose_errors_without_c_translation(bench):
+    with pytest.raises(FileNotFoundError):
+        benchmark.propose(bench, "r1", 1, None)  # nothing generated yet
 
 
 def test_generate_errors_when_corpus_missing(bench, monkeypatch):

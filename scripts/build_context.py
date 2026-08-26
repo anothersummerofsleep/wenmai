@@ -2,7 +2,7 @@
 
 Runs the extraction prompt over the ORIGINAL source chapter plus its finished translation (and the
 existing canon) and writes the model's proposed YAML additions to
-`novels/<novel>/context/_proposals/ch<NNNN>.yaml` for human review. It never edits either persistent
+`novels/<novel>/context/_proposals/ch<NNNNN>.yaml` for human review. It never edits either persistent
 store directly - a human applies accepted entries (that is the reviewable diff).
 
 Proposals separate the two stores (see prompts/context_update.md):
@@ -23,10 +23,13 @@ except ImportError:
     import backends, context  # type: ignore
 
 
-def run(novel: str, chapter: int, backend_name: str | None) -> int:
-    translated_path = context.translated_path(novel, chapter)
+def run(novel: str, chapter: int, backend_name: str | None, translation_path=None) -> int:
+    # translation_path lets a caller (e.g. the benchmark) point extraction at a specific translation
+    # for this chapter - Condition C's output for the run - instead of the novel's translated/ dir.
+    translated_path = translation_path or context.translated_path(novel, chapter)
     if not translated_path.exists():
-        print(f"[error] no translated chapter at {translated_path}. Translate it first.")
+        print(f"[error] no translated chapter at {context.display_path(translated_path)}. "
+              "Translate it first.")
         return 1
 
     config = backends.load_config()
@@ -47,9 +50,9 @@ def run(novel: str, chapter: int, backend_name: str | None) -> int:
     ]
     user = "\n\n".join(user_parts)
 
-    print(f"[extract] proposing context updates from {novel} ch{chapter:04d} "
+    print(f"[extract] proposing context updates from {novel} {context.chapter_id(chapter)} "
           f"via '{backend.name}'...")
-    tag = f"{novel}/ch{chapter:04d}/context_update"
+    tag = f"{novel}/{context.chapter_id(chapter)}/context_update"
     try:
         proposal = backend.complete(system, user, tag=tag)
     except backends.PendingHandoff as handoff:
@@ -58,7 +61,7 @@ def run(novel: str, chapter: int, backend_name: str | None) -> int:
 
     proposals_dir = context.novel_dir(novel) / "context" / "_proposals"
     proposals_dir.mkdir(parents=True, exist_ok=True)
-    out = proposals_dir / f"ch{chapter:04d}.yaml"
+    out = proposals_dir / f"{context.chapter_id(chapter)}.yaml"
     out.write_text(proposal.rstrip() + "\n", encoding="utf-8")
     print(f"[extract] wrote proposals to {context.display_path(out)}")
     print("Review it, then apply accepted entries by hand: canonical keys -> context/<key>.yaml; "

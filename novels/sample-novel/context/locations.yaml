@@ -7,8 +7,8 @@ locations:
       - Green Cloud Peak
       - Qingyun Peak
     type: sect peak
-    first_seen: ch0001
-    notes: Visible from the main hall; the elder looks toward it at the end of ch0001.
+    first_seen: ch00001
+    notes: Visible from the main hall; the elder looks toward it at the end of ch00001.
 
   main_hall:
     source: 大殿
@@ -16,5 +16,5 @@ locations:
     avoid:
       - the great hall
     type: sect building
-    first_seen: ch0001
+    first_seen: ch00001
     notes: Where disciples gather before the elders' dais.

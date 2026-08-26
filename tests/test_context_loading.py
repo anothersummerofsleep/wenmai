@@ -33,8 +33,8 @@ def test_underscore_prefixed_files_not_loaded(make_novel):
 def test_context_records_are_chapter_bounded(make_novel):
     novel = make_novel(contexts={"characters.yaml": (
         "characters:\n"
-        "  early:\n    english: EarlyFact\n    first_seen: ch0001\n"
-        "  later:\n    english: LaterFact\n    first_seen: ch0003\n"
+        "  early:\n    english: EarlyFact\n    first_seen: ch00001\n"
+        "  later:\n    english: LaterFact\n    first_seen: ch00003\n"
     )})
     bounded = context.load_context_records(novel, max_chapter=2)
     assert "EarlyFact" in bounded and "LaterFact" not in bounded
@@ -46,8 +46,8 @@ def test_context_records_are_chapter_bounded(make_novel):
 def test_chapter_bounding_prunes_nested_records(make_novel):
     novel = make_novel(contexts={"cultivation_system.yaml": (
         "realms:\n"
-        "  - english: R1\n    first_seen: ch0001\n"
-        "  - english: R2\n    first_seen: ch0005\n"
+        "  - english: R1\n    first_seen: ch00001\n"
+        "  - english: R2\n    first_seen: ch00005\n"
     )})
     bounded = context.load_context_records(novel, max_chapter=3)
     assert "R1" in bounded and "R2" not in bounded
@@ -55,8 +55,8 @@ def test_chapter_bounding_prunes_nested_records(make_novel):
 
 def test_translation_memory_is_chapter_bounded(make_novel):
     novel = make_novel(phrases=[
-        '{"source": "甲", "gloss": "early-phrase", "first_seen": "ch0001"}',
-        '{"source": "乙", "gloss": "late-phrase", "first_seen": "ch0004"}',
+        '{"source": "甲", "gloss": "early-phrase", "first_seen": "ch00001"}',
+        '{"source": "乙", "gloss": "late-phrase", "first_seen": "ch00004"}',
     ])
     bounded = context.load_translation_memory(novel, max_chapter=3)
     assert "early-phrase" in bounded and "late-phrase" not in bounded

@@ -8,10 +8,10 @@ renderings within a file. It does not prescribe which keys a context file must c
 
 Chapter filename convention (V1): source and translated files are named
 
-    ch<NNNN>_<language>.txt   e.g. ch0001_zh.txt      (source, language = source_language)
-    ch<NNNN>_<language>.md    e.g. ch0001_en.md       (translation, language = target_language)
+    ch<NNNNN>_<language>.txt   e.g. ch00001_zh.txt     (source, language = source_language)
+    ch<NNNNN>_<language>.md    e.g. ch00001_en.md      (translation, language = target_language)
 
-where <NNNN> is a zero-padded 4-digit chapter number. Files that look like chapters but do not
+where <NNNNN> is a zero-padded 5-digit chapter number. Files that look like chapters but do not
 match are flagged (the pipeline resolves chapters by this exact pattern; it does not do arbitrary
 filename ingestion).
 
@@ -33,9 +33,10 @@ try:
 except ImportError:
     import context  # type: ignore
 
-# Chapter filename patterns. <NNNN> = 4 digits, <lang> = 2-3 lowercase letters.
-SOURCE_NAME_RE = re.compile(r"^ch(\d{4})_([a-z]{2,3})\.txt$")
-TRANSLATED_NAME_RE = re.compile(r"^ch(\d{4})_([a-z]{2,3})\.md$")
+# Chapter filename patterns. Canonical is 5 digits; allow 5+ so chapters above 99999 still parse.
+# <lang> = 2-3 lowercase letters.
+SOURCE_NAME_RE = re.compile(r"^ch(\d{5,})_([a-z]{2,3})\.txt$")
+TRANSLATED_NAME_RE = re.compile(r"^ch(\d{5,})_([a-z]{2,3})\.md$")
 CHAPTERISH_RE = re.compile(r"^ch.*\.(txt|md)$", re.IGNORECASE)
 
 
@@ -178,19 +179,78 @@ def _validate_filenames(novel: str, src: str | None, tgt: str | None, issues: li
                     ), "warning"))
                 continue
             if CHAPTERISH_RE.match(f.name):
-                expect = f"ch<NNNN>_{lang or '<lang>'}.{'txt' if kind=='source' else 'md'}"
+                expect = f"ch<NNNNN>_{lang or '<lang>'}.{'txt' if kind=='source' else 'md'}"
                 issues.append(Issue(f"{sub}/{f.name}", "",
                                     f"filename does not match the chapter convention {expect}",
                                     "warning"))
 
 
-def validate_novel(novel: str) -> list[Issue]:
-    """Return all structural issues found in the novel's persistent state (empty = clean)."""
+def _first_seen_ok(value) -> bool:
+    """True if `first_seen` is present and parses to a chapter (canonical form is chNNNNN)."""
+    return context._first_seen_chapter(value) is not None
+
+
+def _validate_first_seen(novel: str, issues: list[Issue]) -> None:
+    """Every durable record must carry a parsable `first_seen` so chapter-bounding can apply.
+
+    Structural, not a rigid schema: a "record" is a direct child entry of a top-level category
+    mapping, or a mapping item in a top-level list. Nested sub-mappings (relationships, etc.) are not
+    required to carry first_seen. This underpins the benchmark's chapter-bounded-knowledge invariant.
+    """
+    for path in context.context_files(novel):
+        rel = f"context/{path.name}"
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except yaml.YAMLError:
+            continue  # already reported by _validate_context_files
+        if not isinstance(data, dict):
+            continue
+        for category, entries in data.items():
+            records = []
+            if isinstance(entries, dict):
+                records = [(f"{category}.{k}", v) for k, v in entries.items()]
+            elif isinstance(entries, list):
+                records = [(f"{category}[{i}]", v) for i, v in enumerate(entries)]
+            for locator, rec in records:
+                if not isinstance(rec, dict):
+                    continue
+                if "first_seen" not in rec:
+                    issues.append(Issue(rel, locator, "record is missing 'first_seen' "
+                                        "(required for chapter-bounding; use chNNNNN)", "error"))
+                elif not _first_seen_ok(rec.get("first_seen")):
+                    issues.append(Issue(rel, locator, f"unparsable 'first_seen' "
+                                        f"{rec.get('first_seen')!r} (use chNNNNN)", "error"))
+
+    tm = context.novel_dir(novel) / "translation_memory" / "phrases.jsonl"
+    if tm.exists():
+        rel = "translation_memory/phrases.jsonl"
+        for lineno, line in enumerate(tm.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # already reported by _validate_translation_memory
+            if not isinstance(obj, dict):
+                continue
+            if not _first_seen_ok(obj.get("first_seen")):
+                issues.append(Issue(rel, f"line {lineno}", "missing or unparsable 'first_seen' "
+                                    "(required for chapter-bounding; use chNNNNN)", "error"))
+
+
+def validate_novel(novel: str, *, require_first_seen: bool = False) -> list[Issue]:
+    """Return all structural issues found in the novel's persistent state (empty = clean).
+
+    `require_first_seen` adds the stricter benchmark check that every durable record carries a
+    parsable `first_seen`. Off by default so general (non-benchmark) novels stay lenient.
+    """
     issues: list[Issue] = []
     src, tgt = _validate_languages(novel, issues)
     _validate_context_files(novel, issues)
     _validate_translation_memory(novel, issues)
     _validate_filenames(novel, src, tgt, issues)
+    if require_first_seen:
+        _validate_first_seen(novel, issues)
     return issues
 
 
@@ -199,10 +259,12 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description="Validate a novel's persistent state.")
     ap.add_argument("--novel", required=True)
+    ap.add_argument("--require-first-seen", action="store_true",
+                    help="also require a parsable first_seen on every durable record (benchmark).")
     args = ap.parse_args()
 
     try:
-        issues = validate_novel(args.novel)
+        issues = validate_novel(args.novel, require_first_seen=args.require_first_seen)
     except FileNotFoundError as err:
         print(f"[error] {err}")
         return 1

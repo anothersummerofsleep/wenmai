@@ -59,9 +59,9 @@ def make_novel(novels_dir):
         tgt = (config or {}).get("target_language", "en")
 
         for n, text in (sources or {}).items():
-            (base / "source" / f"ch{n:04d}_{src}.txt").write_text(text, encoding="utf-8")
+            (base / "source" / f"{context.chapter_id(n)}_{src}.txt").write_text(text, encoding="utf-8")
         for n, text in (translations or {}).items():
-            (base / "translated" / f"ch{n:04d}_{tgt}.md").write_text(text, encoding="utf-8")
+            (base / "translated" / f"{context.chapter_id(n)}_{tgt}.md").write_text(text, encoding="utf-8")
         for name, text in (contexts or {}).items():
             (base / "context" / name).write_text(text, encoding="utf-8")
         if phrases is not None:

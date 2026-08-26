@@ -55,8 +55,8 @@ def test_ascii_uses_word_boundary_not_substring(make_novel):
     )
     all_findings = consistency_check.check_novel(novel)
     hit_files = {f.chapter_file for f in all_findings}
-    assert "ch0002_en.md" in hit_files
-    assert "ch0001_en.md" not in hit_files
+    assert "ch00002_en.md" in hit_files
+    assert "ch00001_en.md" not in hit_files
 
 
 def test_nested_open_ended_structures(make_novel):

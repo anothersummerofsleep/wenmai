@@ -54,14 +54,14 @@ def run(novel: str, chapter: int, backend_name: str | None, force: bool) -> int:
     backend = backends.get_backend(backend_name, config)
 
     # Pass 1: assemble context.
-    print(f"[pass 1] retrieving context for {novel} ch{chapter:04d} "
+    print(f"[pass 1] retrieving context for {novel} {context.chapter_id(chapter)} "
           f"(+{prev_n} previous chapters)...")
     system = build_system_prompt(novel, prev_n)
     user = context.assemble_translation_context(novel, chapter, prev_n)
 
     # Pass 2: translate + annotate.
     print(f"[pass 2] translating via '{backend.name}' backend...")
-    tag = f"{novel}/ch{chapter:04d}/translate"
+    tag = f"{novel}/{context.chapter_id(chapter)}/translate"
     try:
         translated = backend.complete(system, user, tag=tag)
     except backends.PendingHandoff as handoff:

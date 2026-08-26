@@ -22,7 +22,7 @@ def test_only_previous_not_future(make_novel):
 def test_list_translated_chapters_sorted(make_novel):
     novel = make_novel(translations={2: "b", 1: "a", 3: "c"})
     names = [p.name for p in context.list_translated_chapters(novel)]
-    assert names == ["ch0001_en.md", "ch0002_en.md", "ch0003_en.md"]
+    assert names == ["ch00001_en.md", "ch00002_en.md", "ch00003_en.md"]
 
 
 def test_translation_memory_loaded_when_present(make_novel):
