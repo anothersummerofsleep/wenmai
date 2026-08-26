@@ -7,6 +7,13 @@
 novels/*
 !novels/sample-novel
 
+# --- Local benchmark corpora and outputs (copyrighted) stay local -----------
+# Source chapters, official reference translations, and generated candidate
+# translations for real-world benchmarks (e.g. Lord of Mysteries) are never
+# committed. Only public benchmark CODE (scripts/benchmark.py), manifests
+# (benchmarks/<id>/manifest.yaml), and aggregate result summaries live in the repo.
+.local/
+
 # Local config (may hold API keys / model choices)
 config.yaml
 

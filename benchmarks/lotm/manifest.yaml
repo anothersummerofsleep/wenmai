@@ -1,0 +1,29 @@
+# Benchmark manifest: metadata only. NO chapter prose lives here or anywhere in the public repo.
+# Source, official reference, and generated candidates stay under .local/benchmarks/lotm/ (ignored).
+id: lotm
+title_source: 诡秘之主
+title_english: Lord of Mysteries
+language_pair:
+  source: zh
+  target: en
+
+# First experiment: sequential run of chapters 1-10, to watch persistent state accumulate.
+chapters: 10
+
+description: >
+  Private real-world benchmark. A long, context-heavy Chinese web novel with rich terminology,
+  worldbuilding, titles, ranks, relationships, and linguistic nuance. The Chinese source and a
+  complete professional English translation are supplied locally by the user through legitimate
+  access; neither is committed.
+
+# Descriptive tags for why this corpus stresses context-aware translation.
+eval_tags:
+  - terminology-heavy
+  - worldbuilding
+  - titles-and-ranks
+  - relationships
+  - wordplay
+
+notes: >
+  Content (source / reference / generated candidates) lives under .local/benchmarks/lotm/ and is
+  git-ignored. This manifest carries metadata only.

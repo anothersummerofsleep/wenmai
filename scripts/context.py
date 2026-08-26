@@ -182,8 +182,25 @@ def load_language_prompt(lang: str) -> str:
     return path.read_text(encoding="utf-8") if path.exists() else ""
 
 
-def assemble_translation_context(novel: str, chapter: int, previous_chapters: int) -> str:
-    """Build the full user-message context block for the translation pass."""
+def assemble_translation_context(
+    novel: str,
+    chapter: int,
+    previous_chapters: int,
+    *,
+    include_previous: bool = True,
+    include_context: bool = True,
+    include_translation_memory: bool = True,
+) -> str:
+    """Build the user-message context block for the translation pass.
+
+    The header, style guide, and source chapter are always included. The three toggles gate the
+    optional context so the benchmark can build its A/B/C conditions from this one assembler,
+    guaranteeing identical formatting across conditions:
+      - include_previous: the previous N translated chapters (rolling window)
+      - include_context: the canonical context/*.yaml records
+      - include_translation_memory: the translation-memory phrases
+    The normal pipeline uses the defaults (all on).
+    """
     cfg = load_novel_config(novel)
     parts: list[str] = []
 
@@ -195,20 +212,24 @@ def assemble_translation_context(novel: str, chapter: int, previous_chapters: in
     if style:
         parts.append(f"## Style guide\n{style}")
 
-    records = load_context_records(novel)
-    if records:
-        parts.append(f"## Canonical context records\n{records}")
+    if include_context:
+        records = load_context_records(novel)
+        if records:
+            parts.append(f"## Canonical context records\n{records}")
 
-    tm = load_translation_memory(novel)
-    if tm:
-        parts.append("## Translation memory (phrases/jokes already seen - do NOT re-explain these)\n"
-                     f"```jsonl\n{tm}\n```")
+    if include_translation_memory:
+        tm = load_translation_memory(novel)
+        if tm:
+            parts.append(
+                "## Translation memory (phrases/jokes already seen - do NOT re-explain these)\n"
+                f"```jsonl\n{tm}\n```")
 
-    prevs = previous_translations(novel, chapter, previous_chapters)
-    if prevs:
-        blocks = [f"### Chapter {num}\n{text}" for num, text in prevs]
-        parts.append("## Previous translated chapters (for voice and continuity)\n"
-                     + "\n\n".join(blocks))
+    if include_previous:
+        prevs = previous_translations(novel, chapter, previous_chapters)
+        if prevs:
+            blocks = [f"### Chapter {num}\n{text}" for num, text in prevs]
+            parts.append("## Previous translated chapters (for voice and continuity)\n"
+                         + "\n\n".join(blocks))
 
     parts.append(f"## Source chapter to translate (chapter {chapter})\n"
                  f"```\n{read_source(novel, chapter)}\n```")
