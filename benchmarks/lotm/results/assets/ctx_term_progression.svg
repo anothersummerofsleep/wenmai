@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="340" viewBox="0 0 760 340" font-family="Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="760" height="340" fill="#ffffff"/>
+<text x="24" y="24" font-size="15" font-weight="bold" fill="#222222">Where the conditions converge, and where they do not</text>
+<rect x="24.0" y="35.0" width="11" height="11" fill="#4e79a7"/>
+<text x="40.0" y="44.0" font-size="12" fill="#222222">A  chapter-only</text>
+<rect x="174.0" y="35.0" width="11" height="11" fill="#f28e2b"/>
+<text x="190.0" y="44.0" font-size="12" fill="#222222">B  rolling context</text>
+<rect x="324.0" y="35.0" width="11" height="11" fill="#59a14f"/>
+<text x="340.0" y="44.0" font-size="12" fill="#222222">C  Wenmai memory</text>
+<text x="195.0" y="72.0" font-size="12.5" font-weight="bold" fill="#222222" text-anchor="middle">Contextual correctness</text>
+<line x1="38" y1="296.0" x2="370" y2="296.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="32" y="300.0" font-size="10" fill="#666666" text-anchor="end">1</text>
+<line x1="38" y1="243.0" x2="370" y2="243.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="32" y="247.0" font-size="10" fill="#666666" text-anchor="end">2</text>
+<line x1="38" y1="190.0" x2="370" y2="190.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="32" y="194.0" font-size="10" fill="#666666" text-anchor="end">3</text>
+<line x1="38" y1="137.0" x2="370" y2="137.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="32" y="141.0" font-size="10" fill="#666666" text-anchor="end">4</text>
+<line x1="38" y1="84.0" x2="370" y2="84.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="32" y="88.0" font-size="10" fill="#666666" text-anchor="end">5</text>
+<line x1="38" y1="84.0" x2="38" y2="296.0" stroke="#666666" stroke-width="1"/>
+<line x1="38" y1="296.0" x2="370" y2="296.0" stroke="#666666" stroke-width="1"/>
+<text x="38.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">2</text>
+<text x="121.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">3</text>
+<text x="204.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">4</text>
+<text x="287.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">5</text>
+<text x="370.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">6</text>
+<path d="M38.0 190.0 L121.0 190.0 L204.0 137.0 L287.0 84.0 L370.0 84.0" fill="none" stroke="#4e79a7" stroke-width="2.2"/>
+<circle cx="38.0" cy="190.0" r="3.2" fill="#4e79a7"/>
+<circle cx="121.0" cy="190.0" r="3.2" fill="#4e79a7"/>
+<circle cx="204.0" cy="137.0" r="3.2" fill="#4e79a7"/>
+<circle cx="287.0" cy="84.0" r="3.2" fill="#4e79a7"/>
+<circle cx="370.0" cy="84.0" r="3.2" fill="#4e79a7"/>
+<path d="M38.0 137.0 L121.0 137.0 L204.0 84.0 L287.0 84.0 L370.0 84.0" fill="none" stroke="#f28e2b" stroke-width="2.2"/>
+<circle cx="38.0" cy="137.0" r="3.2" fill="#f28e2b"/>
+<circle cx="121.0" cy="137.0" r="3.2" fill="#f28e2b"/>
+<circle cx="204.0" cy="84.0" r="3.2" fill="#f28e2b"/>
+<circle cx="287.0" cy="84.0" r="3.2" fill="#f28e2b"/>
+<circle cx="370.0" cy="84.0" r="3.2" fill="#f28e2b"/>
+<path d="M38.0 84.0 L121.0 84.0 L204.0 84.0 L287.0 84.0 L370.0 84.0" fill="none" stroke="#59a14f" stroke-width="2.2"/>
+<circle cx="38.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<circle cx="121.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<circle cx="204.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<circle cx="287.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<circle cx="370.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<text x="567.0" y="72.0" font-size="12.5" font-weight="bold" fill="#222222" text-anchor="middle">Terminology consistency</text>
+<line x1="410" y1="296.0" x2="742" y2="296.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="404" y="300.0" font-size="10" fill="#666666" text-anchor="end">1</text>
+<line x1="410" y1="243.0" x2="742" y2="243.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="404" y="247.0" font-size="10" fill="#666666" text-anchor="end">2</text>
+<line x1="410" y1="190.0" x2="742" y2="190.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="404" y="194.0" font-size="10" fill="#666666" text-anchor="end">3</text>
+<line x1="410" y1="137.0" x2="742" y2="137.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="404" y="141.0" font-size="10" fill="#666666" text-anchor="end">4</text>
+<line x1="410" y1="84.0" x2="742" y2="84.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="404" y="88.0" font-size="10" fill="#666666" text-anchor="end">5</text>
+<line x1="410" y1="84.0" x2="410" y2="296.0" stroke="#666666" stroke-width="1"/>
+<line x1="410" y1="296.0" x2="742" y2="296.0" stroke="#666666" stroke-width="1"/>
+<text x="410.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">2</text>
+<text x="493.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">3</text>
+<text x="576.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">4</text>
+<text x="659.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">5</text>
+<text x="742.0" y="312.0" font-size="10" fill="#222222" text-anchor="middle">6</text>
+<path d="M410.0 137.0 L493.0 190.0 L576.0 190.0 L659.0 190.0 L742.0 190.0" fill="none" stroke="#4e79a7" stroke-width="2.2"/>
+<circle cx="410.0" cy="137.0" r="3.2" fill="#4e79a7"/>
+<circle cx="493.0" cy="190.0" r="3.2" fill="#4e79a7"/>
+<circle cx="576.0" cy="190.0" r="3.2" fill="#4e79a7"/>
+<circle cx="659.0" cy="190.0" r="3.2" fill="#4e79a7"/>
+<circle cx="742.0" cy="190.0" r="3.2" fill="#4e79a7"/>
+<path d="M410.0 84.0 L493.0 137.0 L576.0 137.0 L659.0 190.0 L742.0 137.0" fill="none" stroke="#f28e2b" stroke-width="2.2"/>
+<circle cx="410.0" cy="84.0" r="3.2" fill="#f28e2b"/>
+<circle cx="493.0" cy="137.0" r="3.2" fill="#f28e2b"/>
+<circle cx="576.0" cy="137.0" r="3.2" fill="#f28e2b"/>
+<circle cx="659.0" cy="190.0" r="3.2" fill="#f28e2b"/>
+<circle cx="742.0" cy="137.0" r="3.2" fill="#f28e2b"/>
+<path d="M410.0 84.0 L493.0 84.0 L576.0 84.0 L659.0 84.0 L742.0 84.0" fill="none" stroke="#59a14f" stroke-width="2.2"/>
+<circle cx="410.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<circle cx="493.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<circle cx="576.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<circle cx="659.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<circle cx="742.0" cy="84.0" r="3.2" fill="#59a14f"/>
+<text x="24" y="332" font-size="10" fill="#666666">Score 1-5 by chapter (x). Contextual correctness converges to 5 for all three by ch5-6; terminology stays separated.</text>
+</svg>

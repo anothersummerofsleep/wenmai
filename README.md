@@ -203,6 +203,32 @@ public; all corpus text (source, official reference, generated candidates) stays
 git-ignored. See [benchmarks/README.md](benchmarks/README.md) for conditions, blinding, evaluation
 dimensions, and methodology caveats.
 
+### LOTM interim results (chapters 1-6)
+
+**Interim, not proof.** Run `lotm-opus48-v1` (`claude-opus-4-8`, independent mode) is **6 / 10
+chapters complete** with **5 informative chapters** (chapter 1 is non-informative: the three
+conditions get equivalent prompts before any history exists). Across those five, **Condition C
+finished first in 5/5**. With N = 5, one run, one corpus, and ordinal scores, this is a directional
+signal, not a statistically significant result.
+
+The most useful finding is *where* the conditions differ. **Contextual correctness converges**: by
+chapters 5-6 all three conditions, including chapter-only, reach the maximum, so the immediate
+source chapter plus a capable model is usually enough to recover narrative context. **Terminology
+consistency stays separated**: chapter-only keeps drifting on established renderings, rolling context
+reduces but does not remove the drift, and the human-reviewed persistent-memory condition preserves
+the frozen decisions throughout. In short, the durable advantage of structured memory here is
+translation-state continuity, not narrative continuity.
+
+![Mean A/B/C score by evaluation dimension, informative chapters 2-6](benchmarks/lotm/results/assets/dimension_means.svg)
+
+![Contextual-correctness and terminology-consistency progression across chapters 2-6](benchmarks/lotm/results/assets/ctx_term_progression.svg)
+
+Full methodology, per-chapter tables, the extraction-audit findings, and limitations are in the
+[chapters 1-6 results write-up](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00006.md); the
+derived scores behind these figures are in
+[the accompanying CSV](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00006_scores.csv), and the
+figures regenerate with `python scripts/plot_benchmark.py`.
+
 ## Status: implemented vs planned
 
 Implemented in v1 (this repo, tested for `zh -> en`):
