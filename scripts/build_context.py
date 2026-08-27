@@ -23,6 +23,29 @@ except ImportError:
     import backends, context  # type: ignore
 
 
+def strip_single_outer_fence(text: str) -> str:
+    """If the WHOLE extraction response is one Markdown code fence, return its inner content.
+
+    Only for the proposal/extraction layer: some models wrap a YAML proposal in ```yaml ... ```.
+    Strips exactly one outer fence, and only when the entire response is that single fenced block
+    (opening ```yaml / ```yml / bare ```, closing ```, nothing outside it, no other fence inside).
+    Anything else is returned unchanged. Never used on translation candidates - a candidate's stray
+    fence is a real benchmark outcome that deterministic evaluation must keep catching.
+    """
+    stripped = text.strip()
+    lines = stripped.splitlines()
+    if len(lines) < 2:
+        return text
+    if lines[0].strip() not in ("```", "```yaml", "```yml"):
+        return text
+    if lines[-1].strip() != "```":
+        return text
+    inner = lines[1:-1]
+    if any(ln.strip().startswith("```") for ln in inner):  # surrounding/other fences: leave alone
+        return text
+    return "\n".join(inner)
+
+
 def run(novel: str, chapter: int, backend_name: str | None, translation_path=None) -> int:
     # translation_path lets a caller (e.g. the benchmark) point extraction at a specific translation
     # for this chapter - Condition C's output for the run - instead of the novel's translated/ dir.
@@ -62,7 +85,7 @@ def run(novel: str, chapter: int, backend_name: str | None, translation_path=Non
     proposals_dir = context.novel_dir(novel) / "context" / "_proposals"
     proposals_dir.mkdir(parents=True, exist_ok=True)
     out = proposals_dir / f"{context.chapter_id(chapter)}.yaml"
-    out.write_text(proposal.rstrip() + "\n", encoding="utf-8")
+    out.write_text(strip_single_outer_fence(proposal).rstrip() + "\n", encoding="utf-8")
     print(f"[extract] wrote proposals to {context.display_path(out)}")
     print("Review it, then apply accepted entries by hand: canonical keys -> context/<key>.yaml; "
           "any `translation_memory` list -> appended as JSON lines to "
