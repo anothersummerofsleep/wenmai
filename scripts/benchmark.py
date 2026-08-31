@@ -45,8 +45,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
+import shutil
 import sys
 from datetime import datetime
 
@@ -263,7 +265,90 @@ def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
     (ch_dir / "deterministic.yaml").write_text(
         yaml.safe_dump(deterministic, allow_unicode=True, sort_keys=True), encoding="utf-8")
     _write_eval_template(ch_dir / "eval_blank.yaml", chapter, labels)
+
+    # A generated chapter always ends with an up-to-date, portable blind-evaluator package.
+    export_eval_package(bid, chapter, run_id)
     return label_to_cond
+
+
+# --------------------------------------------------------------------------- blind-eval package
+
+# The six authoritative artifacts share generic basenames scoped only by their chapter directory.
+# Once exported/uploaded outside that directory, generic names from different chapters collide.
+# The eval_package/ is a derived, portable copy with chapter-qualified basenames plus a checksum
+# manifest. It NEVER includes _blinding, _histories, eval_filled.yaml, analysis.yaml, canonical
+# state, proposals, or the reference translation, so it stays condition-blind and safe to hand out.
+EVAL_PACKAGE_DIRNAME = "eval_package"
+
+
+def _sha256_file(path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def export_eval_package(bid: str, chapter: int, run_id: str):
+    """Create/refresh the portable, condition-blind evaluator package for one chapter.
+
+    Pure byte-copy of the six authoritative artifacts (source chapter, three blinded candidates,
+    deterministic results, blank eval template) into runs/<run>/chNNNNN/eval_package/ under
+    chapter-qualified basenames, plus a blind-safe checksum manifest. It never calls a model, never
+    unblinds, never rewrites or reserializes content, and never reads _blinding/, _histories/,
+    eval_filled.yaml, analysis.yaml, canonical state, proposals, or the reference translation.
+    Idempotent: re-running overwrites the derived copies. Returns the package directory.
+    """
+    novel = _use_state_novel(bid)
+    src = context.source_language(novel)
+    tgt = context.target_language(novel)
+    cid = context.chapter_id(chapter)
+    ch_dir = local_root(bid) / "runs" / run_id / cid
+
+    # (exported basename, authoritative source path) — the only files that ever enter the package.
+    members = [
+        (f"{cid}_{src}.txt", context.source_path(novel, chapter)),
+        (f"{cid}_candidate_1.md", ch_dir / "candidate_1.md"),
+        (f"{cid}_candidate_2.md", ch_dir / "candidate_2.md"),
+        (f"{cid}_candidate_3.md", ch_dir / "candidate_3.md"),
+        (f"{cid}_deterministic.yaml", ch_dir / "deterministic.yaml"),
+        (f"{cid}_eval_blank.yaml", ch_dir / "eval_blank.yaml"),
+    ]
+    missing = [context.display_path(p) for _, p in members if not p.exists()]
+    if missing:
+        raise FileNotFoundError(
+            "cannot export blind evaluation package; missing authoritative artifact(s):\n  - "
+            + "\n  - ".join(missing)
+            + f"\nGenerate chapter {chapter} of run '{run_id}' first."
+        )
+
+    pkg_dir = ch_dir / EVAL_PACKAGE_DIRNAME
+    pkg_dir.mkdir(parents=True, exist_ok=True)
+
+    files: dict[str, dict] = {}
+    for name, source_path in members:
+        shutil.copyfile(source_path, pkg_dir / name)  # byte-for-byte; no parse/reserialize
+        files[name] = {"sha256": _sha256_file(pkg_dir / name)}
+
+    # Manifest carries artifact identity only. Deliberately no candidate->condition mapping, no
+    # blinding, no scores/rankings, no Condition C identity, no history/reference paths.
+    manifest = {
+        "benchmark": bid,
+        "run": run_id,
+        "chapter": cid,
+        "source_language": src,
+        "target_language": tgt,
+        "files": files,
+    }
+    (pkg_dir / f"{cid}_eval_manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+    print("[benchmark] blind evaluation package:")
+    print(f"  {context.display_path(pkg_dir)}")
+    for name, _ in members:
+        print(f"    - {name}")
+    print(f"    - {cid}_eval_manifest.json")
+    return pkg_dir
 
 
 def generate(bid: str, chapters: list[int], backend_name: str | None, run_id: str, seed: str,
@@ -412,6 +497,12 @@ def main() -> int:
                        help="independent (default): B and C keep separate histories (end-to-end "
                             "comparison). shared_c: B and C share C's history (per-chapter ablation).")
 
+    p_exp = sub.add_parser("export-eval",
+                           help="write the portable, chapter-qualified blind evaluator package")
+    p_exp.add_argument("--benchmark", required=True)
+    p_exp.add_argument("--run", required=True)
+    p_exp.add_argument("--chapter", type=int, required=True)
+
     p_prop = sub.add_parser("propose", help="extract a Condition C context proposal for review")
     p_prop.add_argument("--benchmark", required=True)
     p_prop.add_argument("--run", required=True)
@@ -441,6 +532,10 @@ def main() -> int:
             run_id = args.run or datetime.now().strftime("%Y%m%d-%H%M%S")
             generate(args.benchmark, parse_chapters(args.chapters), args.backend, run_id,
                      args.seed, mode=args.mode)
+            return 0
+        if args.cmd == "export-eval":
+            load_manifest(args.benchmark)
+            export_eval_package(args.benchmark, args.chapter, args.run)
             return 0
         if args.cmd == "propose":
             load_manifest(args.benchmark)

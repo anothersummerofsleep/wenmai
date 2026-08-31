@@ -119,6 +119,27 @@ deliberately not an evaluation metric.
     analysis.yaml            (written by `analyze`, after unblinding)
 ```
 
+## Portable blind-evaluator package (`eval_package/`)
+
+The authoritative run artifacts keep their existing chapter-scoped internal paths
+(`runs/<run>/chNNNNN/candidate_1.md`, `deterministic.yaml`, `eval_blank.yaml`, …); those generic
+basenames are only disambiguated by their chapter directory. `generate` additionally writes a
+derived bundle at `runs/<run>/chNNNNN/eval_package/` for handing to a blind evaluator, and
+`export-eval` recreates it for any already-generated chapter:
+
+```bash
+python scripts/benchmark.py export-eval --benchmark lotm --run lotm-opus48-v1 --chapter 8
+```
+
+It holds only the source chapter, the three blinded candidates, the deterministic results, the blank
+eval template, and a checksum manifest, each under a **chapter-qualified basename**
+(`ch00008_candidate_1.md`, …) so files from different chapters cannot collide or be confused when
+uploaded or moved outside the repository. Copies are byte-for-byte (no parse/reserialize). The
+`chNNNNN_eval_manifest.json` records a SHA-256 per exported file so accidental substitutions are
+detectable; it is metadata only and carries no condition mapping. The package deliberately **excludes
+the blinding map** (`_blinding/`), the per-condition histories, `eval_filled.yaml`, `analysis.yaml`,
+canonical state, proposals, and the reference translation, so it stays condition-blind.
+
 ## Blind evaluation
 
 Candidates are presented as `candidate_1/2/3` with a per-chapter randomized mapping stored
