@@ -203,31 +203,37 @@ public; all corpus text (source, official reference, generated candidates) stays
 git-ignored. See [benchmarks/README.md](benchmarks/README.md) for conditions, blinding, evaluation
 dimensions, and methodology caveats.
 
-### LOTM interim results (chapters 1-6)
+### LOTM results (chapters 1-10, final blind phase)
 
-**Interim, not proof.** Run `lotm-opus48-v1` (`claude-opus-4-8`, independent mode) is **6 / 10
-chapters complete** with **5 informative chapters** (chapter 1 is non-informative: the three
-conditions get equivalent prompts before any history exists). Across those five, **Condition C
-finished first in 5/5**. With N = 5, one run, one corpus, and ordinal scores, this is a directional
-signal, not a statistically significant result.
+**Directional, not proof.** Run `lotm-opus48-v1` (`claude-opus-4-8`, independent mode) is **10 / 10
+chapters complete** with **9 informative chapters** (chapter 1 is non-informative: the three
+conditions get equivalent prompts before any history exists). Across those nine, **Condition C
+finished first in 8/9**, the exception being **chapter 9 (`B > C > A`)** where rolling context won on
+character voice while C still held the best terminology score. With n = 9, one run, one corpus, and
+ordinal scores, this is repeated directional evidence, not a statistically significant result.
 
-The most useful finding is *where* the conditions differ. **Contextual correctness converges**: by
-chapters 5-6 all three conditions, including chapter-only, reach the maximum, so the immediate
-source chapter plus a capable model is usually enough to recover narrative context. **Terminology
-consistency stays separated**: chapter-only keeps drifting on established renderings, rolling context
-reduces but does not remove the drift, and the human-reviewed persistent-memory condition preserves
-the frozen decisions throughout. In short, the durable advantage of structured memory here is
-translation-state continuity, not narrative continuity.
+The most useful finding is *where* the conditions differ. **Contextual correctness does not simply
+saturate**: it rises toward the maximum but separates again (chapter 7, and B drops again at chapter
+10), so the immediate source chapter plus a capable model often, but not always, recovers narrative
+context. **Terminology consistency stays the most persistently separated**: chapter-only keeps
+drifting on established renderings, rolling context fluctuates with its window (dropping to 2 at
+chapter 10), and the human-reviewed persistent-memory condition holds the frozen decisions throughout.
+The durable advantage of structured memory here is translation-state continuity, not an every-chapter
+win: C did not lead every literary dimension, and chapter 9 is an explicit counter-example.
 
-![Mean A/B/C score by evaluation dimension, informative chapters 2-6](benchmarks/lotm/results/assets/dimension_means.svg)
+![Mean A/B/C score by evaluation dimension, informative chapters 2-10](benchmarks/lotm/results/assets/lotm-opus48-v1_ch00002-ch00010_dimension_means.svg)
 
-![Contextual-correctness and terminology-consistency progression across chapters 2-6](benchmarks/lotm/results/assets/ctx_term_progression.svg)
+![Contextual-correctness and terminology-consistency progression across chapters 2-10](benchmarks/lotm/results/assets/lotm-opus48-v1_ch00002-ch00010_ctx_term_progression.svg)
 
 Full methodology, per-chapter tables, the extraction-audit findings, and limitations are in the
-[chapters 1-6 results write-up](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00006.md); the
+[chapters 1-10 results write-up](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00010.md); the
 derived scores behind these figures are in
-[the accompanying CSV](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00006_scores.csv), and the
-figures regenerate with `python scripts/plot_benchmark.py`.
+[the accompanying CSV](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00010_scores.csv), and the
+figures regenerate with `python scripts/plot_benchmark.py`. Earlier
+[chapters 1-6](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00006.md) and
+[chapters 1-3](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00003.md) checkpoints are kept
+unchanged as historical provenance. The official English translation has not been inspected; a
+reference comparison is a later, separate phase.
 
 ## Status: implemented vs planned
 

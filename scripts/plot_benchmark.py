@@ -66,6 +66,11 @@ def _mean(xs):
     return sum(xs) / len(xs) if xs else None
 
 
+def _info_chapters(rows: list[dict]) -> list[int]:
+    """Sorted, unique informative chapter numbers present in the CSV (drives ranges dynamically)."""
+    return sorted({int(r["chapter"]) for r in rows if r["informative"] == "True"})
+
+
 def _fmt(value: float) -> str:
     """Trim trailing zeros so 4.40 -> 4.4 and 5.00 -> 5 for compact labels."""
     return f"{value:.2f}".rstrip("0").rstrip(".")
@@ -109,9 +114,12 @@ def dimension_means_svg(rows: list[dict]) -> str:
     plot_h = H - top - bottom
     baseline = top + plot_h
 
+    chs = _info_chapters(rows)
+    span = f"{chs[0]}-{chs[-1]}" if chs else ""
+
     s = _svg_open(W, H)
     s.append(f'<text x="{left}" y="26" font-size="15" font-weight="bold" fill="{INK}">'
-             f'Mean human score by dimension (informative chapters 2-6)</text>')
+             f'Mean human score by dimension (informative chapters {span})</text>')
     s += _legend(left, 44)
 
     # gridlines + y labels at each integer 1..5
@@ -145,14 +153,15 @@ def dimension_means_svg(rows: list[dict]) -> str:
                  f'fill="{INK}" text-anchor="middle">{label}</text>')
 
     s.append(f'<text x="{left}" y="{H - 8}" font-size="10" fill="{AXIS}">'
-             f'Score 1-5 (5 = best). annotation_precision omitted (scored on only one chapter).'
+             f'Score 1-5 (5 = best). Means exclude null observations; annotation_precision omitted '
+             f'and annotation_restraint scored on fewer chapters than the literary dimensions.'
              f'</text>')
     s.append("</svg>")
     return "\n".join(s) + "\n"
 
 
 def _progression_panel(rows, key, panel_x, panel_y, panel_w, panel_h, title):
-    chapters = [2, 3, 4, 5, 6]
+    chapters = _info_chapters(rows)
     top, bottom = panel_y + 26, panel_y + panel_h - 24
     left = panel_x + 26
     right = panel_x + panel_w - 8
@@ -204,9 +213,11 @@ def progression_svg(rows: list[dict]) -> str:
                             "Contextual correctness")
     s += _progression_panel(rows, "terminology_consistency", 384, 58, 366, 262,
                             "Terminology consistency")
+    chs = _info_chapters(rows)
+    span = f"{chs[0]}-{chs[-1]}" if chs else ""
     s.append(f'<text x="24" y="{H - 8}" font-size="10" fill="{AXIS}">'
-             f'Score 1-5 by chapter (x). Contextual correctness converges to 5 for all three by '
-             f'ch5-6; terminology stays separated.</text>')
+             f'Score 1-5 by chapter (x), informative chapters {span}. Contextual correctness rises '
+             f'toward 5 but separates again (e.g. ch7); terminology stays persistently separated.</text>')
     s.append("</svg>")
     return "\n".join(s) + "\n"
 
@@ -215,16 +226,23 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Render benchmark SVG figures from a derived-scores CSV.")
     ap.add_argument("--scores", required=True)
     ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--prefix", default="",
+                    help="filename prefix for the SVGs (e.g. a run/chapter tag). When omitted, the "
+                         "generic 'dimension_means.svg' / 'ctx_term_progression.svg' names are used, "
+                         "so an earlier checkpoint's committed assets are never overwritten.")
     args = ap.parse_args()
 
     rows = _read_rows(Path(args.scores))
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    (out_dir / "dimension_means.svg").write_text(dimension_means_svg(rows), encoding="utf-8")
-    (out_dir / "ctx_term_progression.svg").write_text(progression_svg(rows), encoding="utf-8")
-    print(f"[plot] wrote {out_dir / 'dimension_means.svg'}")
-    print(f"[plot] wrote {out_dir / 'ctx_term_progression.svg'}")
+    pre = f"{args.prefix}_" if args.prefix else ""
+    means_path = out_dir / f"{pre}dimension_means.svg"
+    prog_path = out_dir / f"{pre}ctx_term_progression.svg"
+    means_path.write_text(dimension_means_svg(rows), encoding="utf-8")
+    prog_path.write_text(progression_svg(rows), encoding="utf-8")
+    print(f"[plot] wrote {means_path}")
+    print(f"[plot] wrote {prog_path}")
     return 0
 
 

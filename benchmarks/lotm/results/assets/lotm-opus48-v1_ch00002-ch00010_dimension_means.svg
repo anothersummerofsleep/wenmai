@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="400" viewBox="0 0 760 400" font-family="Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="760" height="400" fill="#ffffff"/>
+<text x="46" y="26" font-size="15" font-weight="bold" fill="#222222">Mean human score by dimension (informative chapters 2-10)</text>
+<rect x="46.0" y="35.0" width="11" height="11" fill="#4e79a7"/>
+<text x="62.0" y="44.0" font-size="12" fill="#222222">A  chapter-only</text>
+<rect x="196.0" y="35.0" width="11" height="11" fill="#f28e2b"/>
+<text x="212.0" y="44.0" font-size="12" fill="#222222">B  rolling context</text>
+<rect x="346.0" y="35.0" width="11" height="11" fill="#59a14f"/>
+<text x="362.0" y="44.0" font-size="12" fill="#222222">C  Wenmai memory</text>
+<line x1="46" y1="304.0" x2="744" y2="304.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="38" y="308.0" font-size="11" fill="#666666" text-anchor="end">1</text>
+<line x1="46" y1="241.5" x2="744" y2="241.5" stroke="#e6e6e6" stroke-width="1"/>
+<text x="38" y="245.5" font-size="11" fill="#666666" text-anchor="end">2</text>
+<line x1="46" y1="179.0" x2="744" y2="179.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="38" y="183.0" font-size="11" fill="#666666" text-anchor="end">3</text>
+<line x1="46" y1="116.5" x2="744" y2="116.5" stroke="#e6e6e6" stroke-width="1"/>
+<text x="38" y="120.5" font-size="11" fill="#666666" text-anchor="end">4</text>
+<line x1="46" y1="54.0" x2="744" y2="54.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="38" y="58.0" font-size="11" fill="#666666" text-anchor="end">5</text>
+<line x1="46" y1="54.0" x2="46" y2="304.0" stroke="#666666" stroke-width="1"/>
+<line x1="46" y1="304.0" x2="744" y2="304.0" stroke="#666666" stroke-width="1"/>
+<rect x="61.2" y="116.5" width="17.0" height="187.5" fill="#4e79a7"/>
+<text x="69.7" y="113.5" font-size="9.5" fill="#666666" text-anchor="middle">4</text>
+<rect x="80.1" y="109.6" width="17.0" height="194.4" fill="#f28e2b"/>
+<text x="88.6" y="106.6" font-size="9.5" fill="#666666" text-anchor="middle">4.11</text>
+<rect x="99.1" y="88.7" width="17.0" height="215.3" fill="#59a14f"/>
+<text x="107.6" y="85.7" font-size="9.5" fill="#666666" text-anchor="middle">4.44</text>
+<text x="89.6" y="320.0" font-size="11" fill="#222222" text-anchor="middle">Faithfulness</text>
+<rect x="148.4" y="109.6" width="17.0" height="194.4" fill="#4e79a7"/>
+<text x="156.9" y="106.6" font-size="9.5" fill="#666666" text-anchor="middle">4.11</text>
+<rect x="167.4" y="95.7" width="17.0" height="208.3" fill="#f28e2b"/>
+<text x="175.9" y="92.7" font-size="9.5" fill="#666666" text-anchor="middle">4.33</text>
+<rect x="186.4" y="54.0" width="17.0" height="250.0" fill="#59a14f"/>
+<text x="194.8" y="51.0" font-size="9.5" fill="#666666" text-anchor="middle">5</text>
+<text x="176.9" y="320.0" font-size="11" fill="#222222" text-anchor="middle">Contextual</text>
+<rect x="235.7" y="172.1" width="17.0" height="131.9" fill="#4e79a7"/>
+<text x="244.2" y="169.1" font-size="9.5" fill="#666666" text-anchor="middle">3.11</text>
+<rect x="254.6" y="137.3" width="17.0" height="166.7" fill="#f28e2b"/>
+<text x="263.1" y="134.3" font-size="9.5" fill="#666666" text-anchor="middle">3.67</text>
+<rect x="273.6" y="60.9" width="17.0" height="243.1" fill="#59a14f"/>
+<text x="282.1" y="57.9" font-size="9.5" fill="#666666" text-anchor="middle">4.89</text>
+<text x="264.1" y="320.0" font-size="11" fill="#222222" text-anchor="middle">Terminology</text>
+<rect x="322.9" y="95.7" width="17.0" height="208.3" fill="#4e79a7"/>
+<text x="331.4" y="92.7" font-size="9.5" fill="#666666" text-anchor="middle">4.33</text>
+<rect x="341.9" y="81.8" width="17.0" height="222.2" fill="#f28e2b"/>
+<text x="350.4" y="78.8" font-size="9.5" fill="#666666" text-anchor="middle">4.56</text>
+<rect x="360.9" y="81.8" width="17.0" height="222.2" fill="#59a14f"/>
+<text x="369.3" y="78.8" font-size="9.5" fill="#666666" text-anchor="middle">4.56</text>
+<text x="351.4" y="320.0" font-size="11" fill="#222222" text-anchor="middle">Char. voice</text>
+<rect x="410.2" y="109.6" width="17.0" height="194.4" fill="#4e79a7"/>
+<text x="418.7" y="106.6" font-size="9.5" fill="#666666" text-anchor="middle">4.11</text>
+<rect x="429.1" y="116.5" width="17.0" height="187.5" fill="#f28e2b"/>
+<text x="437.6" y="113.5" font-size="9.5" fill="#666666" text-anchor="middle">4</text>
+<rect x="448.1" y="88.7" width="17.0" height="215.3" fill="#59a14f"/>
+<text x="456.6" y="85.7" font-size="9.5" fill="#666666" text-anchor="middle">4.44</text>
+<text x="438.6" y="320.0" font-size="11" fill="#222222" text-anchor="middle">Prose</text>
+<rect x="497.4" y="109.6" width="17.0" height="194.4" fill="#4e79a7"/>
+<text x="505.9" y="106.6" font-size="9.5" fill="#666666" text-anchor="middle">4.11</text>
+<rect x="516.4" y="95.7" width="17.0" height="208.3" fill="#f28e2b"/>
+<text x="524.9" y="92.7" font-size="9.5" fill="#666666" text-anchor="middle">4.33</text>
+<rect x="535.4" y="95.7" width="17.0" height="208.3" fill="#59a14f"/>
+<text x="543.8" y="92.7" font-size="9.5" fill="#666666" text-anchor="middle">4.33</text>
+<text x="525.9" y="320.0" font-size="11" fill="#222222" text-anchor="middle">Wordplay</text>
+<rect x="584.7" y="74.8" width="17.0" height="229.2" fill="#4e79a7"/>
+<text x="593.2" y="71.8" font-size="9.5" fill="#666666" text-anchor="middle">4.67</text>
+<rect x="603.6" y="74.8" width="17.0" height="229.2" fill="#f28e2b"/>
+<text x="612.1" y="71.8" font-size="9.5" fill="#666666" text-anchor="middle">4.67</text>
+<rect x="622.6" y="54.0" width="17.0" height="250.0" fill="#59a14f"/>
+<text x="631.1" y="51.0" font-size="9.5" fill="#666666" text-anchor="middle">5</text>
+<text x="613.1" y="320.0" font-size="11" fill="#222222" text-anchor="middle">Ann. restraint</text>
+<rect x="671.9" y="88.7" width="17.0" height="215.3" fill="#4e79a7"/>
+<text x="680.4" y="85.7" font-size="9.5" fill="#666666" text-anchor="middle">4.44</text>
+<rect x="690.9" y="74.8" width="17.0" height="229.2" fill="#f28e2b"/>
+<text x="699.4" y="71.8" font-size="9.5" fill="#666666" text-anchor="middle">4.67</text>
+<rect x="709.9" y="81.8" width="17.0" height="222.2" fill="#59a14f"/>
+<text x="718.3" y="78.8" font-size="9.5" fill="#666666" text-anchor="middle">4.56</text>
+<text x="700.4" y="320.0" font-size="11" fill="#222222" text-anchor="middle">Hallucination</text>
+<text x="46" y="392" font-size="10" fill="#666666">Score 1-5 (5 = best). Means exclude null observations; annotation_precision omitted and annotation_restraint scored on fewer chapters than the literary dimensions.</text>
+</svg>
