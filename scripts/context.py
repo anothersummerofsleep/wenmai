@@ -219,6 +219,27 @@ def load_context_records(novel: str, *, max_chapter: int | None = None) -> str:
     return "\n\n".join(chunks)
 
 
+def load_context_data(novel: str, *, max_chapter: int | None = None) -> list:
+    """Parsed canonical context as a list of per-file YAML documents (structured, not formatted text).
+
+    Same chapter-bounding contract as `load_context_records`: when `max_chapter` is set, records with
+    `first_seen >= max_chapter` are pruned, so a consumer sees only knowledge available before that
+    chapter. When None, every record passes through. This is the structured entry point for tools
+    that need to walk the records (e.g. the drift checker) instead of embedding them in a prompt.
+    """
+    docs: list = []
+    for path in context_files(novel):
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if data is None:
+            continue
+        if max_chapter is not None:
+            data = _prune_future(data, max_chapter)
+            if not data:
+                continue
+        docs.append(data)
+    return docs
+
+
 def load_translation_memory(novel: str, *, max_chapter: int | None = None) -> str:
     path = novel_dir(novel) / "translation_memory" / "phrases.jsonl"
     if not path.exists():

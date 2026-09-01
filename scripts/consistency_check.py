@@ -17,8 +17,6 @@ import re
 import sys
 from dataclasses import dataclass
 
-import yaml
-
 try:
     from . import context as ctx
 except ImportError:
@@ -53,10 +51,15 @@ def _walk_avoid_entries(node):
             yield from _walk_avoid_entries(item)
 
 
-def _iter_avoid_pairs(novel: str):
-    """Yield (preferred, banned_variant) pairs from every context YAML the novel has."""
-    for path in ctx.context_files(novel):
-        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+def _iter_avoid_pairs(novel: str, *, max_chapter: int | None = None):
+    """Yield (preferred, banned_variant) pairs from the novel's context YAML.
+
+    When `max_chapter` is set, only rules on records with `first_seen < max_chapter` are used
+    (chapter-bounded / contemporaneous check); when None, the full current canonical state is used
+    (whole-corpus audit). Bounding is delegated to `context.load_context_data` so `first_seen`
+    semantics live in one place.
+    """
+    for data in ctx.load_context_data(novel, max_chapter=max_chapter):
         for preferred, banned_list in _walk_avoid_entries(data):
             for banned in banned_list:
                 yield preferred, banned
@@ -79,7 +82,11 @@ def check_text(text: str, chapter_file: str, avoid_pairs) -> list[Finding]:
 
 
 def check_novel(novel: str, chapter: int | None = None) -> list[Finding]:
-    avoid_pairs = list(_iter_avoid_pairs(novel))
+    # Per-chapter mode is contemporaneous: only terminology decided BEFORE this chapter
+    # (first_seen < chapter) applies, matching Pass 1's chapter-bounding, so regenerating an early
+    # chapter is never flagged by a later terminology rule. Whole-novel mode (chapter is None) uses
+    # the full current canonical state as a retroactive audit.
+    avoid_pairs = list(_iter_avoid_pairs(novel, max_chapter=chapter))
     if chapter is not None:
         files = [ctx.translated_path(novel, chapter)]
     else:

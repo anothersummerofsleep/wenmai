@@ -269,6 +269,10 @@ python scripts/consistency_check.py --novel <your-novel>
 every durable record carries a chapter). `consistency_check.py` flags where a translation used a
 banned/old spelling instead of the canonical terminology. Fix errors before continuing.
 
+The per-chapter consistency check (`--chapter N`, and Pass 3 of `translate.py`) uses the terminology
+state that was available before that chapter (`first_seen < N`). Running `consistency_check.py`
+without `--chapter` is instead a retroactive audit against your current canonical state.
+
 ## 14. Translate Chapter 2
 
 Add `source/ch00002_zh.txt`, then:
