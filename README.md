@@ -217,7 +217,8 @@ saturate**: it rises toward the maximum but separates again (chapter 7, and B dr
 10), so the immediate source chapter plus a capable model often, but not always, recovers narrative
 context. **Terminology consistency stays the most persistently separated**: chapter-only keeps
 drifting on established renderings, rolling context fluctuates with its window (dropping to 2 at
-chapter 10), and the human-reviewed persistent-memory condition holds the frozen decisions throughout.
+chapter 10), and the human-reviewed persistent-memory condition preserves the frozen decisions most
+consistently, with only a single terminology-score dip to 4 in chapter 8.
 The durable advantage of structured memory here is translation-state continuity, not an every-chapter
 win: C did not lead every literary dimension, and chapter 9 is an explicit counter-example.
 

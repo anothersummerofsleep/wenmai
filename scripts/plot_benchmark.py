@@ -31,8 +31,11 @@ COND_LABEL = {
     "C": "C  Wenmai memory",
 }
 
-# Dimensions shown in the means figure, with compact axis labels. annotation_precision is omitted on
-# purpose: it was null on four of five informative chapters, so a "mean" would not be comparable.
+# Dimensions shown in the means figure, with compact axis labels. Both annotation dimensions are
+# omitted on purpose: the evaluator scored them on only a subset of chapters (annotation_precision on
+# very few; annotation_restraint on fewer chapters than the literary dimensions, with unequal Ns
+# across conditions), so their means are not comparable to the nine-chapter literary means shown here.
+# They are reported separately, with explicit Ns, in the results write-up instead.
 DIMENSIONS = [
     ("faithfulness", "Faithfulness"),
     ("contextual_correctness", "Contextual"),
@@ -40,7 +43,6 @@ DIMENSIONS = [
     ("character_voice_consistency", "Char. voice"),
     ("english_prose_quality", "Prose"),
     ("wordplay_preservation", "Wordplay"),
-    ("annotation_restraint", "Ann. restraint"),
     ("hallucination_or_embellishment", "Hallucination"),
 ]
 
@@ -153,8 +155,8 @@ def dimension_means_svg(rows: list[dict]) -> str:
                  f'fill="{INK}" text-anchor="middle">{label}</text>')
 
     s.append(f'<text x="{left}" y="{H - 8}" font-size="10" fill="{AXIS}">'
-             f'Score 1-5 (5 = best). Means exclude null observations; annotation_precision omitted '
-             f'and annotation_restraint scored on fewer chapters than the literary dimensions.'
+             f'Score 1-5 (5 = best); means exclude null observations. The two annotation dimensions '
+             f'are omitted here (scored on fewer chapters, unequal Ns) and reported in the write-up.'
              f'</text>')
     s.append("</svg>")
     return "\n".join(s) + "\n"
@@ -227,9 +229,11 @@ def main() -> int:
     ap.add_argument("--scores", required=True)
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--prefix", default="",
-                    help="filename prefix for the SVGs (e.g. a run/chapter tag). When omitted, the "
-                         "generic 'dimension_means.svg' / 'ctx_term_progression.svg' names are used, "
-                         "so an earlier checkpoint's committed assets are never overwritten.")
+                    help="filename prefix for the SVGs (e.g. a run/chapter tag). Pass a prefix to "
+                         "write checkpoint-specific names and avoid clobbering an earlier "
+                         "checkpoint's committed assets. When omitted, the generic "
+                         "'dimension_means.svg' / 'ctx_term_progression.svg' names are written, "
+                         "overwriting any existing generic assets in the output dir.")
     args = ap.parse_args()
 
     rows = _read_rows(Path(args.scores))
