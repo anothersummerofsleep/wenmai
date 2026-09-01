@@ -4,6 +4,7 @@ terms:
   qi:
     source: 气
     preferred: qi
+    first_seen: ch00001
     avoid:
       - chi
       # Note: don't list plain common words like "energy" here. The drift checker does substring
@@ -17,6 +18,7 @@ terms:
   dao_xin:
     source: 道心
     preferred: Dao Heart
+    first_seen: ch00001
     avoid:
       - heart of the Dao
       - Taoist heart
@@ -28,6 +30,7 @@ terms:
   azure_cloud_peak:
     source: 青云峰
     preferred: Azure Cloud Peak
+    first_seen: ch00001
     avoid:
       - Green Cloud Peak
       - Qingyun Peak
@@ -38,6 +41,7 @@ terms:
   old_fox:
     source: 老狐狸
     preferred: old fox
+    first_seen: ch00001
     avoid:
       - old vixen
     explanation: >

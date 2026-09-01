@@ -198,9 +198,10 @@ def _prune_future(node, max_chapter: int):
 def load_context_records(novel: str, *, max_chapter: int | None = None) -> str:
     """Concatenate the novel's context YAML files into one labelled block.
 
-    When `max_chapter` is set (benchmark chapter-bounding), any record with `first_seen >=
-    max_chapter` is pruned, so translating chapter i never sees a fact first learned in chapter i or
-    later. When None (normal pipeline), the raw files pass through verbatim (comments preserved).
+    When `max_chapter` is set (chapter-bounding), any record with `first_seen >= max_chapter` is
+    pruned, so translating chapter i never sees a fact first learned in chapter i or later. Both the
+    normal pipeline and the benchmark pass the current chapter here. When None (e.g. a caller that
+    deliberately wants everything), the raw files pass through verbatim (comments preserved).
     """
     chunks: list[str] = []
     for path in context_files(novel):
@@ -286,8 +287,8 @@ def assemble_translation_context(
 
     `context_max_chapter` chapter-bounds the canonical context and translation memory: records with
     `first_seen >= context_max_chapter` are pruned, so translating chapter i cannot be influenced by
-    a fact first learned in chapter i or later. The benchmark passes the current chapter; the normal
-    pipeline leaves it None (no bounding).
+    a fact first learned in chapter i or later. Both the normal pipeline (scripts/translate.py) and
+    the benchmark pass the current chapter; leave it None only to intentionally disable bounding.
     """
     cfg = load_novel_config(novel)
     parts: list[str] = []

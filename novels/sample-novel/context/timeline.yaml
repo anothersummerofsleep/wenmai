@@ -2,8 +2,10 @@
 # Keep it terse: one line per beat, tagged with the chapter it occurs in.
 events:
   - chapter: 1
+    first_seen: ch00001
     beat: Senior Brother Zhang enters the hall; Li Yun warns his junior sister that Elder Qingxu is
           an "old fox".
   - chapter: 1
+    first_seen: ch00001
     beat: Elder Qingxu greets Li Yun with a double-edged line about his "qi"; Li Yun demurs. The
           elder then gazes at Azure Cloud Peak in silence.

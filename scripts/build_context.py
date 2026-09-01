@@ -63,9 +63,12 @@ def run(novel: str, chapter: int, backend_name: str | None, translation_path=Non
     # reconstructed from English), and the finished translation. Source path derives from the
     # novel's source_language; nothing is hardcoded to Chinese.
     system = context.load_prompt("context_update.md")
+    # Existing canon is bounded to knowledge available BEFORE this chapter (first_seen < chapter):
+    # the source chapter + finished translation below are the new evidence from which additions are
+    # proposed. This keeps re-running an old extraction safe and matches the sequential boundary.
     user_parts = [
         "## Existing canonical context (do not restate what is already here)",
-        context.load_context_records(novel),
+        context.load_context_records(novel, max_chapter=chapter),
         f"## Original source chapter ({context.source_language(novel)})",
         context.read_source(novel, chapter),
         "## Finished translation",

@@ -57,7 +57,11 @@ def run(novel: str, chapter: int, backend_name: str | None, force: bool) -> int:
     print(f"[pass 1] retrieving context for {novel} {context.chapter_id(chapter)} "
           f"(+{prev_n} previous chapters)...")
     system = build_system_prompt(novel, prev_n)
-    user = context.assemble_translation_context(novel, chapter, prev_n)
+    # Chapter-bound canonical state / TM to the same knowledge boundary the benchmark used: when
+    # translating chapter i, only durable records with first_seen < i may enter the prompt, so a
+    # later retranslation of an earlier chapter cannot pull future-story state backward. The current
+    # source chapter is passed in full, so nothing actually stated in it is hidden.
+    user = context.assemble_translation_context(novel, chapter, prev_n, context_max_chapter=chapter)
 
     # Pass 2: translate + annotate.
     print(f"[pass 2] translating via '{backend.name}' backend...")

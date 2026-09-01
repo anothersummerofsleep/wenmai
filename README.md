@@ -149,14 +149,23 @@ python scripts/build_context.py --novel sample-novel --chapter 1
 
 ```bash
 mkdir -p novels/<your-novel>/{source,translated,context,translation_memory}
-# add source/ch00001_zh.txt ... , then seed context/*.yaml and style_guide.md
-# (copy sample-novel's files as templates)
+# add novel.yaml + style_guide.md and source/ch00001_zh.txt ...
+# start with EMPTY context/ and translation_memory/ and let the review loop fill them
 python scripts/translate.py --novel <your-novel> --chapter 1
 ```
+
+Use `novels/sample-novel/` as a schema and formatting example (read it), not as context to copy into
+a real novel. **For the complete chapter-by-chapter workflow, including the human-reviewed memory loop
+used by Wenmai's full persistent-memory condition, see [GETTING_STARTED.md](GETTING_STARTED.md).**
 
 Everything under `novels/<your-novel>/` is git-ignored, so it stays on your machine. To version your
 own translations in a private fork, remove the `novels/*` lines from `.gitignore` (or add a
 `!novels/<your-novel>` exception).
+
+Translation is chapter-bounded: when translating chapter *i*, only durable canonical state and
+translation memory with `first_seen` **before** chapter *i* enter the prompt, so re-running an earlier
+chapter never pulls later-story state backward. Run `scripts/validate.py --require-first-seen` so every
+durable record carries the chapter it was learned in.
 
 ## Chapter file convention
 
