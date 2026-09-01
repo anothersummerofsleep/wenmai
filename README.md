@@ -233,8 +233,31 @@ derived scores behind these figures are in
 figures regenerate with `python scripts/plot_benchmark.py`. Earlier
 [chapters 1-6](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00006.md) and
 [chapters 1-3](benchmarks/lotm/results/lotm-opus48-v1_ch00001-ch00003.md) checkpoints are kept
-unchanged as historical provenance. The official English translation has not been inspected; a
-reference comparison is a later, separate phase.
+unchanged as historical provenance. During the blind phase the official English translation had not
+been inspected; that comparison is a separate, post-hoc phase, summarized next and kept visibly
+apart from this frozen blind checkpoint.
+
+### Post-hoc reference analysis (separate from the frozen blind phase)
+
+After the blind benchmark was frozen and published, and after a 77-item comparison universe was
+preregistered, the run was compared against the **official English translation of the Chinese
+source**. Access to the official translation occurred **only after** those freezes. The Chinese
+source stays the primary evidence and **matching the official translation is not correctness**.
+
+Headline (77-item preregistered universe, item-level terminology continuity):
+
+- **C: 0 material drift among 76 determinate preregistered items** (76 consistent, 0 drift, 1 indeterminate)
+- **B: 1 drift item**
+- **A: 3 drift items**
+- **A = B = C = 53/63 = 84.1%** agreement with the official English translation on the common
+  determinate post-hoc subset, i.e. C's advantage is internal continuity, not resemblance to the
+  official translation.
+
+Details: [reference-analysis report](benchmarks/lotm/reference_analysis/lotm-opus48-v1_reference_analysis.md),
+[protocol](benchmarks/lotm/REFERENCE_ANALYSIS_PROTOCOL.md),
+[pre-reference manifest](benchmarks/lotm/reference_analysis/PRE_REFERENCE_MANIFEST.md),
+[provenance](benchmarks/lotm/reference_analysis/REFERENCE_PROVENANCE.md), and the
+[aggregate metrics CSV](benchmarks/lotm/reference_analysis/lotm-opus48-v1_reference_metrics.csv).
 
 ## Status: implemented vs planned
 
