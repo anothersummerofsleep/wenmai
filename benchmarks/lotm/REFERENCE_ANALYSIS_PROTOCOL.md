@@ -117,8 +117,101 @@ Prefer interpretable measures:
 - terminology drift count
 - within-condition recurrence consistency
 
-Define denominators carefully. Only count items that have a **meaningful recurrence opportunity**;
-do not count one-off items with no chance to recur.
+Denominators are not left to post-hoc judgment. They are fixed by the pre-reference comparison
+universe defined next, before the reference is opened.
+
+## Pre-reference comparison universe
+
+All quantitative terminology/consistency analyses use a **source-driven item universe fixed before
+the official English is opened**. The reference translation itself must **never** be used to decide
+which terms/items enter the quantitative sample. The universe is built only from the frozen Chinese
+Chapters 1-10 plus the frozen human-reviewed canonical state and translation memory.
+
+Inclusion rule. Include a translated item when **both** hold:
+
+1. it is represented in the frozen reviewed canonical terminology / entity / location / faction /
+   name state, or in the frozen translation memory; **and**
+2. its source identity has **at least two genuine occurrence opportunities** across Chapters 1-10.
+
+Aliases / source variants that the frozen canonical state already identifies as the same
+entity/item may be grouped. One-off items (fewer than two occurrence opportunities) are **excluded**
+from recurrence-consistency metrics. Timeline events are excluded (narrative beats, not recurring
+translated lexical items). **Do not add items merely because the official translation later makes them
+interesting.**
+
+### Freeze the inventory before reference access
+
+A local, machine-readable inventory is generated from the frozen inputs, before any reference access,
+by the deterministic generator [`../../scripts/build_reference_inventory.py`](../../scripts/build_reference_inventory.py)
+and written to (git-ignored, source-derived):
+
+```
+.local/benchmarks/lotm/reference_analysis/pre_reference_inventory.csv
+```
+
+Each row carries enough to reproduce the denominator: `item_id`, `category`, `source_key`,
+`keys_grouped`, `english`, `first_seen`, `occurrence_count`, `occurrence_chapters`. The raw inventory
+stays local. Its existence-before-exposure is proved publicly by
+[`reference_analysis/PRE_REFERENCE_MANIFEST.md`](reference_analysis/PRE_REFERENCE_MANIFEST.md), which
+records the inventory item count, category counts, the SHA-256 of the frozen CSV, the inclusion rule,
+and generation timestamp/commit provenance. The official English is not inspected while generating it.
+
+## Metric definitions (frozen)
+
+The principal descriptive metrics are fixed here, before reference access.
+
+### Within-condition recurrence consistency
+
+For each pre-registered recurring item:
+
+```
+consistent = the condition uses one materially equivalent translation decision
+             across all genuine recurrence opportunities
+```
+
+Report `consistent items / eligible recurring items` for A, B, C, and later the official translation.
+**Purely grammatical inflection does not constitute a changed translation decision** (e.g. plural or
+possessive of the same rendered name is the same decision); only a materially distinct rendering
+counts as a change.
+
+### Terminology drift count
+
+Defined as the **number of eligible recurring items for which a condition uses more than one
+materially distinct translation decision across Chapters 1-10.** This is an **item count**, not a
+count of every individual variant occurrence.
+
+### Official-reference agreement
+
+Once the reference is opened, compare each condition against the official translation **only over the
+already frozen item universe**. Report agreement descriptively. **Official-match is not correctness.**
+Where exact surface wording differs but both choices appear source-defensible, classify that
+**separately** rather than forcing it into an error category.
+
+### Proper-name agreement
+
+Use the **proper-name / entity subset of the same pre-registered universe** (the character, faction,
+and location items). Do **not** create a separate post-reference hand-selected name list.
+
+### Qualitative examples
+
+Track B / D examples selected because they are "interesting" are **illustrative qualitative cases**,
+unless an explicit exhaustive selection procedure is used. Counts drawn from hand-selected
+qualitative examples must **not** be presented as prevalence estimates; only the pre-registered
+universe yields prevalence.
+
+## Reference provenance / alignment rule
+
+Before any semantic analysis begins in the later command, in order:
+
+1. copy/place the official reference into the designated git-ignored reference area
+   (`.local/benchmarks/lotm/reference/`);
+2. record byte SHA-256 provenance of each reference file;
+3. verify Chapter 1-10 alignment;
+4. create a chapter-mapping manifest;
+5. **stop** if chapters are missing or structurally ambiguous, rather than silently realigning them.
+
+Hashing raw bytes for provenance is permitted before content inspection, provided it does not render
+the text into model context.
 
 ## Condition C boundary
 
