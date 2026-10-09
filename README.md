@@ -62,8 +62,9 @@ the thread of meaning and continuity running through the work.
 own novels. By default your novels and translations live under `novels/`, which is git-ignored, so
 they stay local to you and never get committed or shared; they can also live in a directory outside
 the checkout entirely (see [Where your content lives](#where-your-content-lives)). The only novel
-that ships with the repo is the invented `sample-novel` demo. Translation needs your own LLM access
-(see Backends below); the consistency checker and validator need none.
+that ships with the repo is the invented `sample-novel` demo. Translation and model-assisted context
+extraction need a backend with your own LLM access (see Backends below); deterministic consistency
+checking and validation need none.
 
 ## The annotation idea
 
@@ -127,8 +128,9 @@ content_roots:
 ```
 
 An external root lets your workspaces live in an independently managed (for example, private)
-directory. Wenmai only reads and writes there; nothing in it is published or committed to the
-Wenmai repository. Relative entries resolve against the repository root, and a workspace name found
+directory, managed separately from Wenmai and not committed to the Wenmai repository. Keeping it
+private is up to you: handoff prompts and checker output can still contain its text (see below).
+Relative entries resolve against the repository root, and a workspace name found
 under more than one root is an error unless `content_roots_on_conflict: first` is set.
 
 Model handoff prompts embed document text. With the `claude_code` backend they are written to
@@ -296,8 +298,8 @@ pass-3 check) and the benchmark keep their existing behaviour. Neither command c
 - reads only files that follow the chapter naming convention;
 - prints the matching line with each finding, so its output can contain document text.
 
-The context-extraction and editorial-review prompts are written for translation and have not yet
-been adapted into an original-writing workflow.
+The context-extraction and editorial-review prompts are written for translation and have not been
+adapted for original writing. Wenmai does not provide a writing assistant or editorial pipeline.
 
 ## Chapter file convention
 
@@ -421,8 +423,6 @@ Planned, NOT yet built:
   `.github/workflows-example/` is a disabled stub, not an active pipeline).
 - Split semantic / literary-edit passes; knowledge-graph or embedding retrieval; automatic merging
   of accepted proposals; additional source languages.
-- An original-writing workflow beyond the deterministic checker (context extraction and editorial
-  review adapted for untranslated prose).
 
 ## Roadmap
 
