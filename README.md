@@ -59,9 +59,10 @@ Wenmai treats translation not as sentence substitution, but as the preservation 
 the thread of meaning and continuity running through the work.
 
 **It is a tool, not a content repo.** Clone it, run it on your own machine, and point it at your
-own novels. By default your novels and translations live under `novels/`, which is git-ignored, so
-they stay local to you and never get committed or shared; they can also live in a directory outside
-the checkout entirely (see [Where your content lives](#where-your-content-lives)). The only novel
+own novels. By default your novels and translations live under `novels/`, which Git ignores, so
+they are not staged by default; you remain responsible for reviewing what you stage, commit, or
+share. They can also live in a directory outside the checkout entirely (see
+[Where your content lives](#where-your-content-lives)). The only novel
 that ships with the repo is the invented `sample-novel` demo. Translation and model-assisted context
 extraction need a backend with your own LLM access (see Backends below); deterministic consistency
 checking and validation need none.
@@ -113,13 +114,16 @@ language-specific files can be added without a code change. See [ARCHITECTURE.md
 
 ## Where your content lives
 
-A workspace (one novel or document set, laid out as above) is looked up under one or more
-**content roots**, searched in this order:
+A workspace (one novel or document set, laid out as above) is looked up under a list of **content
+roots**. Exactly one source supplies that list:
 
-1. the `WENMAI_CONTENT_ROOTS` environment variable (several paths separated by `:` on Linux/macOS,
-   `;` on Windows), which takes precedence;
-2. a `content_roots` list in `config.yaml`;
-3. otherwise the bundled `novels/` directory.
+1. the `WENMAI_CONTENT_ROOTS` environment variable, if set (several paths separated by `:` on
+   Linux/macOS, `;` on Windows). It replaces the `config.yaml` list entirely; those roots are not
+   searched as a fallback;
+2. otherwise, a `content_roots` list in `config.yaml`;
+3. if neither is configured, the bundled `novels/` directory.
+
+Within the selected list, roots are searched in the order given.
 
 ```yaml
 # config.yaml
@@ -154,8 +158,8 @@ extraction as separate stages, knowledge-graph retrieval). See "Roadmap" below.
 ## Backends (pluggable)
 
 A backend is only about how and where the model is called (transport and provider), never about
-language. The call is behind one interface (`scripts/backends.py`), so the same pipeline runs two
-ways:
+language. The call is behind one interface (`scripts/backends.py`), so the same pipeline runs with
+any of three backends:
 
 - **`claude_code`** (default): no API key, no per-token billing. The script assembles the full
   prompt into `<runs_dir>/<novel>/<chapter>/<pass>.prompt.md` (`runs_dir` defaults to `.runs`), and
@@ -287,7 +291,8 @@ example above, the exclusive setting reports nothing for `--chapter 1`. A whole-
 always uses the full current canon, in either mode.
 
 These settings affect only `consistency_check.py`. Context retrieval, `translate.py` (including its
-pass-3 check) and the benchmark keep their existing behaviour. Neither command calls a model.
+pass-3 check) and the benchmark keep their existing behaviour. `validate.py` and
+`consistency_check.py` make no model calls.
 
 **Limitations.** The checker:
 
