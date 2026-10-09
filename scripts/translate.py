@@ -84,7 +84,10 @@ def run(novel: str, chapter: int, backend_name: str | None, force: bool) -> int:
 
     # Pass 3: consistency check on the new chapter.
     print("[pass 3] consistency check...")
-    findings = consistency_check.check_novel(novel, chapter)
+    # Pinned to the translation contract: pass 3 checks the translation just written, against
+    # terminology decided before this chapter, whatever the novel's `consistency:` settings say.
+    findings = consistency_check.check_novel(novel, chapter, documents="translated",
+                                             first_seen="exclusive")
     if findings:
         print(f"[pass 3] {len(findings)} terminology drift issue(s):")
         for f in findings:
