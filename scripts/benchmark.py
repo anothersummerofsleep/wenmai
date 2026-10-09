@@ -45,6 +45,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import json
 import random
@@ -55,9 +56,10 @@ from datetime import datetime
 import yaml
 
 try:
-    from . import backends, build_context, consistency_check, context, translate, validate
+    from . import (backends, build_context, config, consistency_check, context, translate,
+                   validate)
 except ImportError:
-    import backends, build_context, consistency_check, context, translate, validate  # type: ignore
+    import backends, build_context, config, consistency_check, context, translate, validate  # type: ignore
 
 # The nine evaluation dimensions. All scored 1-5 where 5 is best; for
 # hallucination_or_embellishment, 5 means "no unsupported additions".
@@ -104,13 +106,20 @@ def load_manifest(bid: str) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
-def _use_state_novel(bid: str) -> str:
-    """Point the context layer at this benchmark's local state novel and return its name.
+def _benchmark_op(fn):
+    """Scope a benchmark entrypoint to its own local corpus.
 
-    The state novel dir is <local_root>/state, so NOVELS_DIR is its parent (the benchmark root).
+    Validates the benchmark id, then for the duration of the call forces the content root to
+    this benchmark's local root (outranking any configured external roots) and restores it
+    afterwards, on success or failure. Every decorated entrypoint takes the benchmark id as its
+    first positional argument.
     """
-    context.NOVELS_DIR = local_root(bid)
-    return STATE_NOVEL
+    @functools.wraps(fn)
+    def wrapper(bid, *args, **kwargs):
+        config.validate_segment(bid, kind="benchmark id")
+        with context.use_content_root(local_root(bid)):
+            return fn(bid, *args, **kwargs)
+    return wrapper
 
 
 def parse_chapters(spec: str) -> list[int]:
@@ -128,6 +137,7 @@ def parse_chapters(spec: str) -> list[int]:
 
 # --------------------------------------------------------------------------- checks
 
+@_benchmark_op
 def check_local(bid: str, chapters: list[int]) -> list[str]:
     """Return human-readable problems with the local corpus (empty = ready to generate).
 
@@ -135,7 +145,6 @@ def check_local(bid: str, chapters: list[int]) -> list[str]:
     every source chapter present under the five-digit convention; and that the existing persistent
     state passes validation, including chapter-bounding metadata (first_seen). Reuses validate.py.
     """
-    _use_state_novel(bid)
     problems: list[str] = []
     state = local_root(bid) / STATE_NOVEL
 
@@ -208,6 +217,7 @@ def _write_history(run_dir, cond: str, chapter: int, tgt: str, text: str) -> Non
     (d / f"{context.chapter_id(chapter)}_{tgt}.md").write_text(text, encoding="utf-8")
 
 
+@_benchmark_op
 def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
                      mode: str = "independent") -> dict:
     """Generate A/B/C candidates for one chapter, write blinded outputs, return the blinding map.
@@ -218,7 +228,8 @@ def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
     history (a controlled per-chapter ablation of structured memory, window held constant). A is
     stateless in both. Call chapters in order.
     """
-    novel = _use_state_novel(bid)
+    config.validate_segment(run_id, kind="run id")
+    novel = STATE_NOVEL
     prev_n = _prev_n()
     tgt = context.target_language(novel)
     system = translate.build_system_prompt(novel, prev_n)
@@ -289,6 +300,7 @@ def _sha256_file(path) -> str:
     return h.hexdigest()
 
 
+@_benchmark_op
 def export_eval_package(bid: str, chapter: int, run_id: str):
     """Create/refresh the portable, condition-blind evaluator package for one chapter.
 
@@ -299,7 +311,8 @@ def export_eval_package(bid: str, chapter: int, run_id: str):
     eval_filled.yaml, analysis.yaml, canonical state, proposals, or the reference translation.
     Idempotent: re-running overwrites the derived copies. Returns the package directory.
     """
-    novel = _use_state_novel(bid)
+    config.validate_segment(run_id, kind="run id")
+    novel = STATE_NOVEL
     src = context.source_language(novel)
     tgt = context.target_language(novel)
     cid = context.chapter_id(chapter)
@@ -366,6 +379,7 @@ def generate(bid: str, chapters: list[int], backend_name: str | None, run_id: st
 
 # --------------------------------------------------------------------------- C state-update bridge
 
+@_benchmark_op
 def propose(bid: str, run_id: str, chapter: int, backend_name: str | None) -> int:
     """Run context extraction for Condition C's translation of one chapter (the C state-update step).
 
@@ -374,7 +388,8 @@ def propose(bid: str, run_id: str, chapter: int, backend_name: str | None) -> in
     proposal to state/context/_proposals/chNNNNN.yaml. It NEVER touches state/context/*.yaml,
     translation_memory/phrases.jsonl, or the reference translation; a human reviews and applies.
     """
-    novel = _use_state_novel(bid)
+    config.validate_segment(run_id, kind="run id")
+    novel = STATE_NOVEL
     tgt = context.target_language(novel)
     run_dir = local_root(bid) / "runs" / run_id
     c_translation = _history_dir(run_dir, "C") / f"{context.chapter_id(chapter)}_{tgt}.md"
@@ -428,6 +443,8 @@ def _mean(xs):
 
 def analyze_run(bid: str, run_id: str) -> dict:
     """Unblind and aggregate per-condition means (human dimensions + deterministic)."""
+    config.validate_segment(bid, kind="benchmark id")
+    config.validate_segment(run_id, kind="run id")
     run_dir = local_root(bid) / "runs" / run_id
     if not run_dir.is_dir():
         raise FileNotFoundError(f"no such run: {context.display_path(run_dir)}")

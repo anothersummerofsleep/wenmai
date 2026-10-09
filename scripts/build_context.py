@@ -19,8 +19,10 @@ import sys
 
 try:
     from . import backends, context
+    from . import config as _config
 except ImportError:
     import backends, context  # type: ignore
+    import config as _config  # type: ignore
 
 
 def strip_single_outer_fence(text: str) -> str:
@@ -57,6 +59,12 @@ def run(novel: str, chapter: int, backend_name: str | None, translation_path=Non
 
     config = backends.load_config()
     backend = backends.get_backend(backend_name, config)
+
+    # Same isolation guard as translate.run: the extraction prompt embeds the source chapter and
+    # translation, so warn before it is written if an external workspace would be persisted into
+    # a handoff directory inside the repository checkout.
+    _config.warn_if_artifacts_leak_into_repo(context.content_roots(),
+                                             getattr(backend, "runs_dir", None))
 
     # Give the extraction model all three: existing canon, the ORIGINAL source (so source-language
     # terms, names, idioms, and `source:` values are recovered from the source rather than

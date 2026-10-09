@@ -32,8 +32,8 @@ def bench(tmp_path, monkeypatch):
     # A metadata-only manifest (the real one lives in benchmarks/<id>/; tests supply their own).
     monkeypatch.setattr(benchmark, "load_manifest",
                         lambda b: {"language_pair": {"source": "zh", "target": "en"}, "chapters": 10})
-    # generate() mutates context.NOVELS_DIR; patch it so pytest restores it afterwards.
-    monkeypatch.setattr(context, "NOVELS_DIR", root)
+    # Deliberately NOT patching context.NOVELS_DIR: every benchmark operation must reach its corpus
+    # through the scoped @_benchmark_op override, so a missing override fails here.
 
     state = root / "state"
     (state / "source").mkdir(parents=True)
@@ -55,6 +55,28 @@ def test_check_local_flags_missing_source(bench):
     problems = benchmark.check_local(bench, [1, 2, 3])
     assert any("chapter 3" in p for p in problems)  # only ch1,ch2 supplied
     assert not any("chapter 1" in p for p in problems)
+
+
+def test_benchmark_ops_ignore_configured_roots_and_restore_them(bench, tmp_path, monkeypatch):
+    # A configured external root holding its own "state" workspace must not be used by benchmark
+    # operations, and the configured roots are back in force after success and after failure.
+    from scripts import config
+    external = tmp_path / "external"
+    (external / benchmark.STATE_NOVEL / "source").mkdir(parents=True)
+    monkeypatch.setenv(config.CONTENT_ROOTS_ENV, str(external))
+    configured = context.content_roots()
+    assert configured == [external]
+
+    problems = benchmark.check_local(bench, [1, 2])
+    # Resolved against the benchmark corpus: its sources are found, and its own terminology file
+    # (absent from the external decoy) is what gets validated.
+    assert not any(p.startswith("missing") for p in problems)
+    assert any("terminology.yaml" in p for p in problems)
+    assert context.content_roots() == configured
+
+    with pytest.raises(ValueError):
+        benchmark.generate_chapter(bench, 1, Recorder(), run_id="../escape", seed="s")
+    assert context.content_roots() == configured
 
 
 def test_generate_creates_blinded_candidates(bench):
@@ -173,11 +195,13 @@ def test_generation_context_is_chapter_bounded(bench):
 
 
 def test_deterministic_scores_detect_banned_variant(bench):
-    benchmark._use_state_novel(bench)  # point context at the state novel so avoid-lists load
-    scores = benchmark.deterministic_scores("---\n---\n# C\n\nThe chi surged.")
+    # deterministic_scores reads the state novel's avoid-lists, so scope the content root to this
+    # benchmark's corpus exactly as the decorated entrypoints do in production.
+    with context.use_content_root(benchmark.local_root(bench)):
+        scores = benchmark.deterministic_scores("---\n---\n# C\n\nThe chi surged.")
+        clean = benchmark.deterministic_scores(VALID_MD)
     assert scores["banned_variant_count"] == 1
     assert scores["banned_variants"][0]["preferred"] == "qi"
-    clean = benchmark.deterministic_scores(VALID_MD)
     assert clean["banned_variant_count"] == 0
     assert clean["formatting_valid"] is True
 

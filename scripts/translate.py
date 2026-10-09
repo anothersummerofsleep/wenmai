@@ -19,9 +19,9 @@ import sys
 
 # Allow running as `python scripts/translate.py` or `python -m scripts.translate`.
 try:
-    from . import backends, context, consistency_check
+    from . import backends, context, consistency_check, config
 except ImportError:
-    import backends, context, consistency_check  # type: ignore
+    import backends, context, consistency_check, config  # type: ignore
 
 
 def build_system_prompt(novel: str, prev_n: int) -> str:
@@ -49,9 +49,15 @@ def run(novel: str, chapter: int, backend_name: str | None, force: bool) -> int:
         print(f"[skip] {context.display_path(out_path)} already exists. Use --force to redo.")
         return 0
 
-    config = backends.load_config()
-    prev_n = int(config.get("retrieval", {}).get("previous_chapters", 2))
-    backend = backends.get_backend(backend_name, config)
+    cfg = backends.load_config()
+    prev_n = int(cfg.get("retrieval", {}).get("previous_chapters", 2))
+    backend = backends.get_backend(backend_name, cfg)
+
+    # Isolation guard: if the workspace is read from an external content root but this backend
+    # would write handoff prompts inside the repository checkout, warn before any prompt is
+    # written (prompts embed the source text). Backends that do not persist to disk expose no
+    # runs_dir and are skipped.
+    config.warn_if_artifacts_leak_into_repo(context.content_roots(), getattr(backend, "runs_dir", None))
 
     # Pass 1: assemble context.
     print(f"[pass 1] retrieving context for {novel} {context.chapter_id(chapter)} "

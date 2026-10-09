@@ -12,12 +12,56 @@ from __future__ import annotations
 
 import json
 import re
+import warnings
+from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
 
+# Shared low-level config/path layer. Dual import so this module works both as part of the
+# `scripts` package (tests, `python -m scripts.translate`) and when a sibling script is run
+# directly (`python scripts/translate.py`, which puts scripts/ on sys.path).
+try:
+    from . import config as _config
+except ImportError:  # pragma: no cover - exercised only when run as a loose script
+    import config as _config  # type: ignore
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 NOVELS_DIR = REPO_ROOT / "novels"
+
+# An explicit, process-local content root that outranks env/config while set. Used by the
+# benchmark so a benchmark-local operation reliably resolves against its own corpus even when
+# external content roots are configured. Managed only through `use_content_root` (always
+# restored); never assign it directly.
+_ROOT_OVERRIDE: Path | None = None
+
+
+@contextmanager
+def use_content_root(root):
+    """Force `root` as the sole content root for the duration of the block, then restore.
+
+    Outranks WENMAI_CONTENT_ROOTS and config 'content_roots'. Nesting-safe and restored on
+    both success and failure, so a scoped override never leaks into later operations.
+    """
+    global _ROOT_OVERRIDE
+    previous = _ROOT_OVERRIDE
+    _ROOT_OVERRIDE = Path(root)
+    try:
+        yield
+    finally:
+        _ROOT_OVERRIDE = previous
+
+
+def content_roots() -> list[Path]:
+    """Directories searched for a workspace, in priority order.
+
+    A scoped `use_content_root` override wins outright; otherwise precedence is the
+    WENMAI_CONTENT_ROOTS env var, then config.yaml 'content_roots', then the NOVELS_DIR
+    default. NOVELS_DIR is read at call time so tests and the benchmark can repoint it.
+    """
+    if _ROOT_OVERRIDE is not None:
+        return [_ROOT_OVERRIDE]
+    return _config.resolve_content_roots([NOVELS_DIR])
 
 
 class ConfigError(ValueError):
@@ -36,23 +80,50 @@ PREFERRED_CONTEXT_ORDER = [
 
 
 def display_path(path: Path) -> str:
-    """A short, human-friendly form of `path` for logs, robust to paths outside the repo.
+    """A short, human-friendly form of `path` for logs, safe to show for external paths.
 
-    Novels can live anywhere (and tests use temp dirs), so never assume a path is under REPO_ROOT.
+    Workspaces can live anywhere (and tests use temp dirs), so never print an absolute
+    external location: a path under a known root shows only its in-root portion, and a path
+    under none shows a non-identifying marker. See scripts/config.safe_display.
     """
-    for base in (NOVELS_DIR, REPO_ROOT):
-        try:
-            return str(path.relative_to(base))
-        except ValueError:
-            continue
-    return str(path)
+    try:
+        bases = [*content_roots(), REPO_ROOT]
+    except Exception:  # never let a logging/display call raise on a bad config
+        bases = [NOVELS_DIR, REPO_ROOT]
+    return _config.safe_display(path, bases)
 
 
 def novel_dir(novel: str) -> Path:
-    path = NOVELS_DIR / novel
-    if not path.is_dir():
-        raise FileNotFoundError(f"No such novel: {path}")
-    return path
+    """Resolve a workspace identifier to its directory under the configured content roots.
+
+    The identifier must be a single safe path segment (no separators, drive, or `..`), and the
+    resolved directory must stay within its root, so a workspace can never escape its root. If
+    the same identifier exists under more than one root the behaviour is deterministic: error by
+    default (naming the roots by stable label, never absolute path), or first-match with a
+    warning when `content_roots_on_conflict: first` is set.
+    """
+    _config.validate_segment(novel, kind="workspace identifier")
+    roots = content_roots()
+    matches: list[tuple[int, Path]] = []
+    for index, root in enumerate(roots):
+        candidate = root / novel
+        if candidate.is_dir() and _config.is_within(candidate, root):
+            matches.append((index, candidate))
+
+    if not matches:
+        searched = ", ".join(f"content_roots[{i}]" for i in range(len(roots))) or "content_roots[0]"
+        raise FileNotFoundError(f"No such workspace: {novel!r} (searched {searched})")
+
+    if len(matches) > 1:
+        labels = ", ".join(f"content_roots[{i}]" for i, _ in matches)
+        if _config.conflict_policy() == "error":
+            raise ValueError(
+                f"workspace {novel!r} exists under multiple content roots ({labels}); set "
+                f"'{_config.CONFLICT_KEY}: first' to use the first, or remove the duplicate.")
+        warnings.warn(
+            f"workspace {novel!r} found under multiple content roots ({labels}); using the first.",
+            _config.ContentRootWarning, stacklevel=2)
+    return matches[0][1]
 
 
 def load_novel_config(novel: str) -> dict:
@@ -63,8 +134,24 @@ def load_novel_config(novel: str) -> dict:
             f"novel '{novel}': novel.yaml is missing. Every novel must declare its language pair, "
             "e.g.\n  source_language: zh\n  target_language: en"
         )
-    with path.open(encoding="utf-8") as fh:
-        return yaml.safe_load(fh) or {}
+    return _load_yaml(path) or {}
+
+
+def _load_yaml(path: Path):
+    """Parse a workspace YAML file without leaking its location or contents on error.
+
+    PyYAML's own message names the file (absolute when read from a handle) and quotes the
+    offending line; both can be private for an external workspace. Re-raise as ConfigError with
+    the display-safe path, line/column, and the parser's problem description only.
+    """
+    try:
+        return yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as err:
+        mark = getattr(err, "problem_mark", None)
+        where = f" (line {mark.line + 1}, column {mark.column + 1})" if mark else ""
+        problem = getattr(err, "problem", None) or "malformed YAML"
+        raise ConfigError(
+            f"invalid YAML in {display_path(path)}{where}: {problem}") from None
 
 
 def _require_language(novel: str, field: str) -> str:
@@ -115,7 +202,7 @@ def translated_path(novel: str, chapter: int) -> Path:
 def read_source(novel: str, chapter: int) -> str:
     path = source_path(novel, chapter)
     if not path.exists():
-        raise FileNotFoundError(f"Missing source chapter: {path}")
+        raise FileNotFoundError(f"Missing source chapter: {display_path(path)}")
     return path.read_text(encoding="utf-8")
 
 
@@ -211,7 +298,7 @@ def load_context_records(novel: str, *, max_chapter: int | None = None) -> str:
         if max_chapter is None:
             text = raw
         else:
-            data = _prune_future(yaml.safe_load(raw), max_chapter)
+            data = _prune_future(_load_yaml(path), max_chapter)
             if not data:
                 continue
             text = yaml.safe_dump(data, allow_unicode=True, sort_keys=False).strip()
@@ -229,7 +316,7 @@ def load_context_data(novel: str, *, max_chapter: int | None = None) -> list:
     """
     docs: list = []
     for path in context_files(novel):
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = _load_yaml(path)
         if data is None:
             continue
         if max_chapter is not None:

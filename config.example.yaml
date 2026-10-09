@@ -13,8 +13,24 @@ anthropic:
 
 claude_code:
   # Where prompt/response handoff files are written for the claude_code backend.
+  # May be an ABSOLUTE path to keep assembled prompts out of the repo checkout (useful when a
+  # workspace lives in an external content root, below; relative paths resolve under the repo).
   runs_dir: .runs
 
 # How much preceding context to retrieve before translating a chapter.
 retrieval:
   previous_chapters: 2   # include the N previously translated chapters as context
+
+# Where workspaces (novels / document sets) are searched for, in priority order. Each entry is a
+# directory that contains one subdirectory per workspace. Relative paths resolve against the repo
+# root; absolute paths let a workspace live in an independently managed directory outside the repo.
+# Default when unset: the bundled ./novels. The WENMAI_CONTENT_ROOTS environment variable
+# (os.pathsep-separated) overrides this list for a single run.
+# content_roots:
+#   - novels
+#   - /abs/path/to/an/external/workspace-root
+
+# What to do when the same workspace name exists under more than one content root:
+#   error  (default) -> fail and name the roots, so nothing is silently shadowed
+#   first            -> use the first matching root and emit a warning
+# content_roots_on_conflict: error
