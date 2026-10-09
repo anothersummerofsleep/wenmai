@@ -23,31 +23,20 @@ import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+# Shared low-level config/path layer (dual import: package or loose-script invocation).
+# `load_config` is re-exported here so existing `backends.load_config(...)` callers keep working.
+try:
+    from . import config as _config
+    from .config import load_config
+except ImportError:  # pragma: no cover - exercised only when run as a loose script
+    import config as _config  # type: ignore
+    from config import load_config  # type: ignore
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class PendingHandoff(Exception):
     """Raised by ClaudeCodeBackend when it has written a prompt and is waiting for a response file."""
-
-
-def _rel(path: Path) -> str:
-    """Path relative to the repo root for display, robust to paths outside it (e.g. tests)."""
-    try:
-        return str(path.relative_to(REPO_ROOT))
-    except ValueError:
-        return str(path)
-
-
-def load_config() -> dict:
-    """Load config.yaml if present, else fall back to config.example.yaml defaults."""
-    import yaml
-
-    for name in ("config.yaml", "config.example.yaml"):
-        path = REPO_ROOT / name
-        if path.exists():
-            with path.open(encoding="utf-8") as fh:
-                return yaml.safe_load(fh) or {}
-    return {}
 
 
 class LLMBackend(ABC):
@@ -76,7 +65,9 @@ class ClaudeCodeBackend(LLMBackend):
         self.runs_dir = REPO_ROOT / runs_dir
 
     def complete(self, system: str, user: str, *, tag: str) -> str:
-        base = self.runs_dir / tag
+        # Validate the tag per segment and assert it stays within runs_dir: a tag with an
+        # absolute path or `..` must never write outside the configured output directory.
+        base = _config.safe_join(self.runs_dir, tag)
         base.parent.mkdir(parents=True, exist_ok=True)
         prompt_path = base.with_suffix(".prompt.md")
         response_path = base.with_suffix(".response.md")
@@ -91,8 +82,11 @@ class ClaudeCodeBackend(LLMBackend):
             if text:
                 return text
 
-        rel_prompt = _rel(prompt_path)
-        rel_response = _rel(response_path)
+        # Display relative to runs_dir (then the repo), never an absolute external path: an
+        # external runs_dir may itself be a private location.
+        display_bases = [self.runs_dir, REPO_ROOT]
+        rel_prompt = _config.safe_display(prompt_path, display_bases)
+        rel_response = _config.safe_display(response_path, display_bases)
         raise PendingHandoff(
             "claude_code backend is waiting on a response.\n"
             f"  1. Read the assembled prompt:  {rel_prompt}\n"

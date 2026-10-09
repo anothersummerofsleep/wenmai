@@ -78,6 +78,14 @@ any real novel.
 4. **Schema is source-neutral.** Records use `source:` for the original-language token (not
    `chinese:`) and `english` / `preferred` for the canonical rendering. The drift checker finds any
    dict carrying an `avoid:` list, regardless of file, nesting, or genre.
+5. **Content roots are configurable.** Workspaces are searched under the roots returned by
+   `context.content_roots()`: the `WENMAI_CONTENT_ROOTS` env var, then `content_roots` in
+   `config.yaml`, then the bundled `novels/` default. Relative entries resolve against the repo
+   root; an absolute root lets a workspace live in an independently managed directory outside the
+   repo, without changing default behaviour. Identifiers are validated to a single safe path
+   segment and the resolved directory must stay within its root; a name found under more than one
+   root is handled deterministically (`content_roots_on_conflict`: `error` by default, `first` to
+   opt into first-match-with-warning). Nothing is hardcoded to `novels/` beyond that default.
 
 ## Adding a language pair later (sketch, not yet implemented)
 
