@@ -187,7 +187,17 @@ def validate_segment(name: str, *, kind: str = "identifier") -> str:
         raise ValueError(
             f"invalid {kind} {name!r}: must be a single path segment with no separators, "
             "drive, or parent references")
+    if _windows_alias(name):
+        raise ValueError(
+            f"invalid {kind} {name!r}: must not end with a dot or a space (Windows strips them, "
+            "so the name would alias another directory)")
     return name
+
+
+def _windows_alias(segment: str) -> bool:
+    """True if Windows would silently rewrite `segment` (trailing dots/spaces are stripped, so
+    'demo.' opens 'demo' and '...' opens the parent). Rejected on every OS for portability."""
+    return segment != segment.rstrip(". ")
 
 
 def safe_join(base, tag: str) -> Path:
@@ -201,7 +211,7 @@ def safe_join(base, tag: str) -> Path:
         raise ValueError(f"unsafe handoff tag {tag!r}: contains a drive or backslash separator")
     segments = [seg for seg in tag.split("/")]
     for seg in segments:
-        if seg in ("", ".", ".."):
+        if seg in ("", ".", "..") or _windows_alias(seg):
             raise ValueError(f"unsafe segment in handoff tag {tag!r}")
     target = base.joinpath(*segments)
     if not is_within(target, base):

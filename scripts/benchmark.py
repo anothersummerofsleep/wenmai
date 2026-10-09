@@ -106,16 +106,6 @@ def load_manifest(bid: str) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
-def _use_state_novel(bid: str) -> str:
-    """Return the state-novel slug.
-
-    The state novel dir is <local_root>/state. The active content root for a benchmark
-    operation is set by the @_benchmark_op decorator on the calling entrypoint (scoped and
-    restored), so this helper no longer mutates module-global state.
-    """
-    return STATE_NOVEL
-
-
 def _benchmark_op(fn):
     """Scope a benchmark entrypoint to its own local corpus.
 
@@ -155,7 +145,6 @@ def check_local(bid: str, chapters: list[int]) -> list[str]:
     every source chapter present under the five-digit convention; and that the existing persistent
     state passes validation, including chapter-bounding metadata (first_seen). Reuses validate.py.
     """
-    _use_state_novel(bid)
     problems: list[str] = []
     state = local_root(bid) / STATE_NOVEL
 
@@ -240,7 +229,7 @@ def generate_chapter(bid: str, chapter: int, backend, run_id: str, seed: str,
     stateless in both. Call chapters in order.
     """
     config.validate_segment(run_id, kind="run id")
-    novel = _use_state_novel(bid)
+    novel = STATE_NOVEL
     prev_n = _prev_n()
     tgt = context.target_language(novel)
     system = translate.build_system_prompt(novel, prev_n)
@@ -323,7 +312,7 @@ def export_eval_package(bid: str, chapter: int, run_id: str):
     Idempotent: re-running overwrites the derived copies. Returns the package directory.
     """
     config.validate_segment(run_id, kind="run id")
-    novel = _use_state_novel(bid)
+    novel = STATE_NOVEL
     src = context.source_language(novel)
     tgt = context.target_language(novel)
     cid = context.chapter_id(chapter)
@@ -400,7 +389,7 @@ def propose(bid: str, run_id: str, chapter: int, backend_name: str | None) -> in
     translation_memory/phrases.jsonl, or the reference translation; a human reviews and applies.
     """
     config.validate_segment(run_id, kind="run id")
-    novel = _use_state_novel(bid)
+    novel = STATE_NOVEL
     tgt = context.target_language(novel)
     run_dir = local_root(bid) / "runs" / run_id
     c_translation = _history_dir(run_dir, "C") / f"{context.chapter_id(chapter)}_{tgt}.md"

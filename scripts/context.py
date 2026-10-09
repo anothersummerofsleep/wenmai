@@ -134,8 +134,24 @@ def load_novel_config(novel: str) -> dict:
             f"novel '{novel}': novel.yaml is missing. Every novel must declare its language pair, "
             "e.g.\n  source_language: zh\n  target_language: en"
         )
-    with path.open(encoding="utf-8") as fh:
-        return yaml.safe_load(fh) or {}
+    return _load_yaml(path) or {}
+
+
+def _load_yaml(path: Path):
+    """Parse a workspace YAML file without leaking its location or contents on error.
+
+    PyYAML's own message names the file (absolute when read from a handle) and quotes the
+    offending line; both can be private for an external workspace. Re-raise as ConfigError with
+    the display-safe path, line/column, and the parser's problem description only.
+    """
+    try:
+        return yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as err:
+        mark = getattr(err, "problem_mark", None)
+        where = f" (line {mark.line + 1}, column {mark.column + 1})" if mark else ""
+        problem = getattr(err, "problem", None) or "malformed YAML"
+        raise ConfigError(
+            f"invalid YAML in {display_path(path)}{where}: {problem}") from None
 
 
 def _require_language(novel: str, field: str) -> str:
@@ -186,7 +202,7 @@ def translated_path(novel: str, chapter: int) -> Path:
 def read_source(novel: str, chapter: int) -> str:
     path = source_path(novel, chapter)
     if not path.exists():
-        raise FileNotFoundError(f"Missing source chapter: {path}")
+        raise FileNotFoundError(f"Missing source chapter: {display_path(path)}")
     return path.read_text(encoding="utf-8")
 
 
@@ -282,7 +298,7 @@ def load_context_records(novel: str, *, max_chapter: int | None = None) -> str:
         if max_chapter is None:
             text = raw
         else:
-            data = _prune_future(yaml.safe_load(raw), max_chapter)
+            data = _prune_future(_load_yaml(path), max_chapter)
             if not data:
                 continue
             text = yaml.safe_dump(data, allow_unicode=True, sort_keys=False).strip()
@@ -300,7 +316,7 @@ def load_context_data(novel: str, *, max_chapter: int | None = None) -> list:
     """
     docs: list = []
     for path in context_files(novel):
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = _load_yaml(path)
         if data is None:
             continue
         if max_chapter is not None:

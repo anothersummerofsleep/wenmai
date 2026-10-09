@@ -12,7 +12,33 @@ from pathlib import Path
 
 import pytest
 
-from scripts import context
+from scripts import config, context
+
+# Keys that select WHERE workspaces are read from. Ambient values (a developer's shell or local
+# config.yaml) must not redirect fixtures that point the code at a temp root via NOVELS_DIR.
+AMBIENT_ROOT_KEYS = ("content_roots", config.CONFLICT_KEY)
+
+
+def isolate_ambient_content_roots(monkeypatch) -> None:
+    """Drop ambient content-root settings, leaving every other config key intact.
+
+    Removes WENMAI_CONTENT_ROOTS from the environment and strips the content-root keys from what
+    config.load_config returns. A test that exercises the feature sets its own values afterwards
+    (monkeypatch.setenv / patching config.load_config), which replaces this baseline, so the
+    real precedence and collision logic is still what runs.
+    """
+    monkeypatch.delenv(config.CONTENT_ROOTS_ENV, raising=False)
+    real_load = config.load_config
+
+    def load_without_ambient_roots() -> dict:
+        return {k: v for k, v in real_load().items() if k not in AMBIENT_ROOT_KEYS}
+
+    monkeypatch.setattr(config, "load_config", load_without_ambient_roots)
+
+
+@pytest.fixture(autouse=True)
+def _no_ambient_content_roots(monkeypatch):
+    isolate_ambient_content_roots(monkeypatch)
 
 
 @pytest.fixture
@@ -81,4 +107,6 @@ def sample_novel_copy(tmp_path, monkeypatch):
     root.mkdir()
     shutil.copytree(real, root / "sample-novel")
     monkeypatch.setattr(context, "NOVELS_DIR", root)
+    # Tripwire: callers mutate this workspace, so it must resolve to the copy, never the tracked one.
+    assert context.novel_dir("sample-novel") == root / "sample-novel"
     return "sample-novel"

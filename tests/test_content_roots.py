@@ -242,7 +242,8 @@ def test_get_backend_uses_absolute_configured_runs_dir(tmp_path):
     assert str(out) not in str(exc.value)  # handoff message is redacted, no absolute path
 
 
-def test_backends_load_config_is_shared_alias():
+def test_backends_load_config_is_shared_alias(monkeypatch):
+    monkeypatch.undo()  # drop the conftest isolation wrapper so the real function is compared
     assert backends.load_config is config.load_config
 
 
@@ -274,3 +275,209 @@ def test_override_restored_on_exception(tmp_path):
         with context.use_content_root(tmp_path / "bench"):
             raise RuntimeError("boom")
     assert context.content_roots() == before
+
+
+# --------------------------------------------------------------------------- ambient isolation (tests)
+
+def test_ambient_config_roots_do_not_redirect_legacy_fixtures(tmp_path, monkeypatch, make_novel,
+                                                              novels_dir):
+    # A local config.yaml that configures content_roots must not pull fixture-based tests away
+    # from their temp root. Simulate one by pointing the real loader at a temp "repo".
+    fake_repo = tmp_path / "repo"
+    decoy = tmp_path / "decoy"
+    _workspace(decoy, "novel")
+    fake_repo.mkdir()
+    (fake_repo / "config.yaml").write_text(
+        f"content_roots:\n  - {decoy.as_posix()}\ncontent_roots_on_conflict: first\n"
+        "retrieval:\n  previous_chapters: 3\n", encoding="utf-8")
+    monkeypatch.setattr(config, "REPO_ROOT", fake_repo)
+
+    slug = make_novel()
+    assert context.novel_dir(slug) == novels_dir / slug
+    cfg = config.load_config()
+    assert "content_roots" not in cfg and config.CONFLICT_KEY not in cfg
+    assert cfg["retrieval"]["previous_chapters"] == 3  # only root-selection keys are dropped
+
+
+def _tree_digest(root: Path) -> dict:
+    import hashlib
+    return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def test_ambient_env_root_does_not_redirect_legacy_suite(tmp_path):
+    # End to end: run real legacy tests in a child pytest with WENMAI_CONTENT_ROOTS pointing at an
+    # external root that holds a decoy copy of the sample workspace. Isolation means they pass and
+    # neither the decoy nor the tracked sample is touched.
+    import shutil
+    import subprocess
+    import sys
+
+    sample = context.REPO_ROOT / "novels" / "sample-novel"
+    external = tmp_path / "external"
+    shutil.copytree(sample, external / "sample-novel")
+    before_decoy, before_sample = _tree_digest(external), _tree_digest(sample)
+
+    env = dict(os.environ, **{config.CONTENT_ROOTS_ENV: str(external)})
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
+         "tests/test_smoke.py", "tests/test_context_loading.py"],
+        cwd=context.REPO_ROOT, env=env, capture_output=True, text=True, timeout=300)
+    assert result.returncode == 0, result.stdout[-2000:] + result.stderr[-2000:]
+    assert _tree_digest(external) == before_decoy
+    assert _tree_digest(sample) == before_sample
+
+
+# --------------------------------------------------------------------------- error redaction
+
+def _external_workspace(tmp_path, monkeypatch, name="demo"):
+    root = tmp_path / "private-external-root"
+    ws = _workspace(root, name)
+    (ws / "context").mkdir()
+    (ws / "novel.yaml").write_text("source_language: zh\ntarget_language: en\n", encoding="utf-8")
+    monkeypatch.setattr(config, "load_config", lambda: {"content_roots": [str(root)]})
+    return root, ws
+
+
+def test_missing_source_error_redacts_external_root(tmp_path, monkeypatch):
+    root, _ = _external_workspace(tmp_path, monkeypatch)
+    with pytest.raises(FileNotFoundError) as exc:
+        context.read_source("demo", 1)
+    msg = str(exc.value)
+    assert str(root) not in msg and "private-external-root" not in msg
+    assert str(Path("demo") / "source" / "ch00001_zh.txt") in msg  # still diagnosable
+
+
+def test_malformed_novel_yaml_error_redacts_path_and_content(tmp_path, monkeypatch):
+    _, ws = _external_workspace(tmp_path, monkeypatch)
+    (ws / "novel.yaml").write_text("source_language: zh\ntitle: [PRIVATE-MARKER\n", encoding="utf-8")
+    with pytest.raises(context.ConfigError) as exc:
+        context.load_novel_config("demo")
+    msg = str(exc.value)
+    assert "private-external-root" not in msg and "PRIVATE-MARKER" not in msg
+    assert "novel.yaml" in msg and "line " in msg
+    # The parser's own exception (which quotes the line and names the file) is not chained.
+    assert exc.value.__cause__ is None and exc.value.__suppress_context__
+
+
+def test_malformed_context_yaml_error_redacts_path_and_content(tmp_path, monkeypatch):
+    _, ws = _external_workspace(tmp_path, monkeypatch)
+    (ws / "context" / "glossary.yaml").write_text("terms: [PRIVATE-MARKER\n", encoding="utf-8")
+    for load in (lambda: context.load_context_records("demo", max_chapter=2),
+                 lambda: context.load_context_data("demo")):
+        with pytest.raises(context.ConfigError) as exc:
+            load()
+        msg = str(exc.value)
+        assert "private-external-root" not in msg and "PRIVATE-MARKER" not in msg
+        assert "glossary.yaml" in msg
+
+
+# --------------------------------------------------------------------------- guard ordering
+
+class _RecordingBackend:
+    """Reports a runs_dir (as the claude_code backend does) but persists nothing."""
+    name = "fake"
+
+    def __init__(self, runs_dir):
+        self.runs_dir = runs_dir
+        self.calls = []
+
+    def complete(self, system, user, *, tag):
+        self.calls.append(tag)
+        return "characters: {}\n"
+
+
+def _guarded_entrypoint(name, tmp_path, monkeypatch, runs_dir):
+    """An external workspace with chapter 1 source + translation, and a recording backend."""
+    from scripts import build_context, translate
+    _, ws = _external_workspace(tmp_path, monkeypatch)
+    (ws / "translated").mkdir()
+    (ws / "source" / "ch00001_zh.txt").write_text("source text", encoding="utf-8")
+    (ws / "translated" / "ch00001_en.md").write_text("# Chapter 1\n\nText.\n", encoding="utf-8")
+    fake = _RecordingBackend(runs_dir)
+    monkeypatch.setattr(backends, "get_backend", lambda *a, **k: fake)
+    run = {"translate": lambda: translate.run("demo", 1, None, force=True),
+           "build_context": lambda: build_context.run("demo", 1, None)}[name]
+    return run, fake
+
+
+@pytest.mark.parametrize("entrypoint", ["translate", "build_context"])
+def test_guard_warns_before_any_prompt_is_handed_off(tmp_path, monkeypatch, entrypoint):
+    run, fake = _guarded_entrypoint(entrypoint, tmp_path, monkeypatch, config.REPO_ROOT / ".runs")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", config.ContentRootWarning)
+        with pytest.raises(config.ContentRootWarning):
+            run()
+    assert fake.calls == []  # raised before the backend received (and could persist) a prompt
+
+
+@pytest.mark.parametrize("entrypoint", ["translate", "build_context"])
+def test_guard_silent_with_external_runs_dir(tmp_path, monkeypatch, recwarn, entrypoint):
+    run, fake = _guarded_entrypoint(entrypoint, tmp_path, monkeypatch, tmp_path / "runs")
+    run()
+    assert fake.calls
+    assert not any(isinstance(w.message, config.ContentRootWarning) for w in recwarn.list)
+
+
+# --------------------------------------------------------------------------- Windows aliasing
+
+@pytest.mark.parametrize("bad", ["demo.", "demo ", "...", "demo. ", " . "])
+def test_identifier_rejects_trailing_dot_or_space(bad):
+    with pytest.raises(ValueError):
+        config.validate_segment(bad, kind="workspace identifier")
+
+
+@pytest.mark.parametrize("ok", ["demo", ".hidden", "v1.2-demo", "a b"])
+def test_identifier_accepts_ordinary_names(ok):
+    assert config.validate_segment(ok) == ok
+
+
+def test_safe_join_rejects_trailing_dot_segment(tmp_path):
+    with pytest.raises(ValueError):
+        config.safe_join(tmp_path / "runs", "demo./ch00001/translate")
+
+
+# --------------------------------------------------------------------------- junction containment
+# Directory junctions need no administrator or Developer Mode privilege, so unlike the symlink
+# test above these always run on Windows.
+
+windows_only = pytest.mark.skipif(os.name != "nt", reason="directory junctions are Windows-only")
+
+
+def _make_junction(link: Path, target: Path) -> None:
+    import _winapi
+    _winapi.CreateJunction(str(target), str(link))
+
+
+@windows_only
+def test_junction_escape_is_not_resolved_as_workspace(tmp_path, monkeypatch):
+    root = tmp_path / "novels"
+    root.mkdir()
+    outside = tmp_path / "outside"
+    (outside / "source").mkdir(parents=True)
+    _make_junction(root / "demo", outside)
+    assert (root / "demo" / "source").is_dir()  # the junction itself is live
+    monkeypatch.setattr(context, "NOVELS_DIR", root)
+    with pytest.raises(FileNotFoundError):
+        context.novel_dir("demo")
+
+
+@windows_only
+def test_junction_inside_root_is_allowed(tmp_path, monkeypatch):
+    root = tmp_path / "novels"
+    real = _workspace(root, "real")
+    _make_junction(root / "alias", real)
+    monkeypatch.setattr(context, "NOVELS_DIR", root)
+    assert context.novel_dir("alias") == root / "alias"
+
+
+@windows_only
+def test_junction_escape_blocked_for_handoff_tag(tmp_path):
+    runs, outside = tmp_path / "runs", tmp_path / "outside"
+    runs.mkdir()
+    outside.mkdir()
+    _make_junction(runs / "demo", outside)
+    backend = backends.ClaudeCodeBackend(runs_dir=str(runs))
+    with pytest.raises(ValueError):
+        backend.complete("SYS", "USER", tag="demo/ch00001/translate")
+    assert list(outside.iterdir()) == []  # nothing written through the junction

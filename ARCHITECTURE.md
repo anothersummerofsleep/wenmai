@@ -83,7 +83,9 @@ any real novel.
    `config.yaml`, then the bundled `novels/` default. Relative entries resolve against the repo
    root; an absolute root lets a workspace live in an independently managed directory outside the
    repo, without changing default behaviour. Identifiers are validated to a single safe path
-   segment and the resolved directory must stay within its root; a name found under more than one
+   segment (no trailing dot or space, which Windows would silently strip) and the resolved
+   directory must stay within its root, including through symlinks and junctions. Errors show
+   paths relative to their root, never an absolute external location. A name found under more than one
    root is handled deterministically (`content_roots_on_conflict`: `error` by default, `first` to
    opt into first-match-with-warning). Nothing is hardcoded to `novels/` beyond that default.
 
