@@ -97,9 +97,11 @@ FIRST_SEEN_MODES = ("exclusive", "inclusive")
 def settings(novel: str) -> tuple[str, str]:
     """(documents, first_seen) from novel.yaml's optional `consistency:` block, validated.
 
-    Absent block or keys mean the translation defaults ('translated', 'exclusive').
+    An absent block, an empty mapping, or absent keys mean the translation defaults
+    ('translated', 'exclusive'). Any other non-mapping value, including null/false/[]/"", is an
+    error rather than a silent fallback to the defaults.
     """
-    block = ctx.load_novel_config(novel).get("consistency") or {}
+    block = ctx.load_novel_config(novel).get("consistency", {})
     if not isinstance(block, dict):
         raise ctx.ConfigError(f"novel '{novel}': 'consistency' in novel.yaml must be a mapping")
     documents = block.get("documents", "translated")

@@ -147,7 +147,20 @@ def test_translate_pass3_pinned_to_translation_contract(make_novel, monkeypatch,
 
 # --------------------------------------------------------------------------- config errors + CLI
 
-@pytest.mark.parametrize("block", ["source", {"documents": "manuscript"}, {"first_seen": "yes"}])
+def test_absent_or_empty_block_uses_defaults(make_novel):
+    absent = _ws(make_novel, EN, translations={2: "Mara Vel."})
+    empty = make_novel("empty", config={**EN, "consistency": {}}, translations={2: "Mara Vel."},
+                       contexts={"characters.yaml": CANON})
+    for novel in (absent, empty):
+        assert consistency_check.settings(novel) == ("translated", "exclusive")
+        assert _banned(consistency_check.check_novel(novel, 2)) == [("ch00002_en.md", "Mara Vel")]
+
+
+@pytest.mark.parametrize("block", [
+    None, False, 0, "", [],                            # falsey non-mappings must not mean "absent"
+    "source", ["source"], True,                        # truthy non-mappings
+    {"documents": "manuscript"}, {"first_seen": "yes"},
+])
 def test_invalid_settings_raise_config_error(make_novel, block):
     novel = _ws(make_novel, {**EN, "consistency": block}, sources={1: "x"})
     with pytest.raises(context.ConfigError):
