@@ -9,6 +9,15 @@ Run standalone across a whole novel:
 
 Or check one chapter (used as pass 3 by translate.py):
     python scripts/consistency_check.py --novel sample-novel --chapter 1
+
+A workspace whose documents are the source text itself (no translation step) can opt in, in
+novel.yaml, to scanning `source/` and to applying a rule in the chapter that established it:
+
+    consistency:
+      documents: source       # default: translated
+      first_seen: inclusive   # default: exclusive (first_seen < N); inclusive is first_seen <= N
+
+These settings affect only this checker. Retrieval and translate.py's pass 3 are unchanged.
 """
 from __future__ import annotations
 
@@ -81,13 +90,58 @@ def check_text(text: str, chapter_file: str, avoid_pairs) -> list[Finding]:
     return findings
 
 
-def check_novel(novel: str, chapter: int | None = None) -> list[Finding]:
-    # Per-chapter mode is contemporaneous: only terminology decided BEFORE this chapter
+DOCUMENT_MODES = ("translated", "source")
+FIRST_SEEN_MODES = ("exclusive", "inclusive")
+
+
+def settings(novel: str) -> tuple[str, str]:
+    """(documents, first_seen) from novel.yaml's optional `consistency:` block, validated.
+
+    An absent block, an empty mapping, or absent keys mean the translation defaults
+    ('translated', 'exclusive'). Any other non-mapping value, including null/false/[]/"", is an
+    error rather than a silent fallback to the defaults.
+    """
+    block = ctx.load_novel_config(novel).get("consistency", {})
+    if not isinstance(block, dict):
+        raise ctx.ConfigError(f"novel '{novel}': 'consistency' in novel.yaml must be a mapping")
+    documents = block.get("documents", "translated")
+    first_seen = block.get("first_seen", "exclusive")
+    if documents not in DOCUMENT_MODES:
+        raise ctx.ConfigError(f"novel '{novel}': consistency.documents must be one of "
+                              f"{DOCUMENT_MODES}, got {documents!r}")
+    if first_seen not in FIRST_SEEN_MODES:
+        raise ctx.ConfigError(f"novel '{novel}': consistency.first_seen must be one of "
+                              f"{FIRST_SEEN_MODES}, got {first_seen!r}")
+    return documents, first_seen
+
+
+def _source_chapters(novel: str) -> list:
+    """All source chapter files, in chapter order (mirrors context.list_translated_chapters)."""
+    return sorted((ctx.novel_dir(novel) / "source").glob(f"ch*_{ctx.source_language(novel)}.txt"))
+
+
+def check_novel(novel: str, chapter: int | None = None, *, documents: str | None = None,
+                first_seen: str | None = None) -> list[Finding]:
+    # Per-chapter mode is contemporaneous: by default only terminology decided BEFORE this chapter
     # (first_seen < chapter) applies, matching Pass 1's chapter-bounding, so regenerating an early
-    # chapter is never flagged by a later terminology rule. Whole-novel mode (chapter is None) uses
-    # the full current canonical state as a retroactive audit.
-    avoid_pairs = list(_iter_avoid_pairs(novel, max_chapter=chapter))
-    if chapter is not None:
+    # chapter is never flagged by a later terminology rule. With first_seen='inclusive' a rule also
+    # applies in the chapter that established it (first_seen <= chapter). Whole-novel mode (chapter
+    # is None) always uses the full current canonical state as a retroactive audit.
+    #
+    # `documents` / `first_seen` default to the novel.yaml `consistency:` settings; callers that
+    # must keep the translation contract regardless of that block (translate.py pass 3) pin them.
+    if documents is None or first_seen is None:  # pinned callers never read the block
+        cfg_documents, cfg_first_seen = settings(novel)
+        documents = documents or cfg_documents
+        first_seen = first_seen or cfg_first_seen
+    if documents not in DOCUMENT_MODES or first_seen not in FIRST_SEEN_MODES:
+        raise ValueError(f"unknown consistency mode: documents={documents!r}, first_seen={first_seen!r}")
+
+    bound = None if chapter is None else (chapter + 1 if first_seen == "inclusive" else chapter)
+    avoid_pairs = list(_iter_avoid_pairs(novel, max_chapter=bound))
+    if documents == "source":
+        files = [ctx.source_path(novel, chapter)] if chapter is not None else _source_chapters(novel)
+    elif chapter is not None:
         files = [ctx.translated_path(novel, chapter)]
     else:
         files = ctx.list_translated_chapters(novel)
@@ -108,7 +162,11 @@ def main() -> int:
     ap.add_argument("--chapter", type=int, default=None, help="Check one chapter; default is all.")
     args = ap.parse_args()
 
-    findings = check_novel(args.novel, args.chapter)
+    try:
+        findings = check_novel(args.novel, args.chapter)
+    except (FileNotFoundError, ValueError) as err:  # ConfigError is a ValueError
+        print(f"[error] {err}")
+        return 1  # same exit status an uncaught error had before; findings also exit 1
     if not findings:
         print(f"[consistency] OK - no banned variants found in {args.novel}.")
         return 0

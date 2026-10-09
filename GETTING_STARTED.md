@@ -273,6 +273,19 @@ The per-chapter consistency check (`--chapter N`, and Pass 3 of `translate.py`) 
 state that was available before that chapter (`first_seen < N`). Running `consistency_check.py`
 without `--chapter` is instead a retroactive audit against your current canonical state.
 
+For a workspace whose documents are the source text itself (for example, original writing checked
+against its own name and terminology canon, with no translation step), `novel.yaml` can opt the
+checker into scanning `source/` and into applying a rule in the chapter that established it:
+
+```yaml
+consistency:
+  documents: source       # default: translated
+  first_seen: inclusive   # default: exclusive (first_seen < N); inclusive is first_seen <= N
+```
+
+These settings affect only `consistency_check.py`. Context retrieval and Pass 3 of `translate.py`
+keep the translation behaviour described above.
+
 ## 14. Translate Chapter 2
 
 Add `source/ch00002_zh.txt`, then:
