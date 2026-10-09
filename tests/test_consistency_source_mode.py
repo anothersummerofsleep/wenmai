@@ -154,11 +154,18 @@ def test_invalid_settings_raise_config_error(make_novel, block):
         consistency_check.check_novel(novel, 1)
 
 
-def test_cli_reports_config_error_cleanly(make_novel, monkeypatch, capsys):
-    novel = _ws(make_novel, {**EN, "consistency": {"documents": "manuscript"}}, sources={1: "x"})
-    monkeypatch.setattr(sys, "argv", ["consistency_check.py", "--novel", novel])
-    assert consistency_check.main() == 2
-    assert capsys.readouterr().out.startswith("[error] ")
+@pytest.mark.parametrize("config, argv_extra", [
+    ({**EN, "consistency": {"documents": "manuscript"}}, []),  # configuration error
+    (SOURCE_MODE, ["--chapter", "1"]),                          # runtime error: missing workspace
+])
+def test_cli_errors_print_message_and_keep_exit_code_1(make_novel, monkeypatch, capsys,
+                                                       config, argv_extra):
+    novel = _ws(make_novel, config, sources={1: "x"})
+    target = novel if config is not SOURCE_MODE else "no-such-workspace"
+    monkeypatch.setattr(sys, "argv", ["consistency_check.py", "--novel", target, *argv_extra])
+    assert consistency_check.main() == 1  # pre-existing exit status for failures
+    out = capsys.readouterr().out
+    assert out.startswith("[error] ") and "Traceback" not in out
 
 
 def test_cli_source_mode_makes_no_external_calls(make_novel, monkeypatch, capsys):

@@ -164,7 +164,7 @@ def main() -> int:
         findings = check_novel(args.novel, args.chapter)
     except (FileNotFoundError, ValueError) as err:  # ConfigError is a ValueError
         print(f"[error] {err}")
-        return 2
+        return 1  # same exit status an uncaught error had before; findings also exit 1
     if not findings:
         print(f"[consistency] OK - no banned variants found in {args.novel}.")
         return 0
