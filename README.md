@@ -31,6 +31,12 @@ consistency. (A dedicated evaluation system is planned, not yet built; see Statu
 The aim is to combine the consistency of a maintained translation project with the contextual
 awareness of a human translator who has actually read the story.
 
+Translation is Wenmai's primary purpose. The same canon files also support a narrower second use:
+**deterministic name and terminology checking directly against source documents**, with no
+translation step and no model call. That works for any language Wenmai can read, including original
+English writing checked against its own canon (`en -> en`). It is a consistency check, not a writing
+or editing assistant; see [Checking source documents](#checking-source-documents-no-translation).
+
 See [MISSION.md](MISSION.md) for the fuller mission.
 
 ## Core principles
@@ -53,9 +59,11 @@ Wenmai treats translation not as sentence substitution, but as the preservation 
 the thread of meaning and continuity running through the work.
 
 **It is a tool, not a content repo.** Clone it, run it on your own machine, and point it at your
-own novels. Your novels and translations live under `novels/` and are git-ignored by default, so
-they stay local to you and never get committed or shared. The only novel that ships with the repo
-is the invented `sample-novel` demo. Bring your own LLM access (either backend, see below).
+own novels. By default your novels and translations live under `novels/`, which is git-ignored, so
+they stay local to you and never get committed or shared; they can also live in a directory outside
+the checkout entirely (see [Where your content lives](#where-your-content-lives)). The only novel
+that ships with the repo is the invented `sample-novel` demo. Translation needs your own LLM access
+(see Backends below); the consistency checker and validator need none.
 
 ## The annotation idea
 
@@ -81,7 +89,7 @@ See `prompts/translate.md` for the full rule.
 ## Repo layout
 
 ```
-novels/<novel>/
+novels/<novel>/   (novels/ is the default content root; see "Where your content lives")
   source/         ch00001_<src>.txt, ...                (immutable source; suffix = source_language)
   translated/     ch00001_<tgt>.md, ...                 (output; suffix = target_language; one PR/chapter)
   context/        characters.yaml terminology.yaml locations.yaml factions.yaml timeline.yaml
@@ -92,7 +100,8 @@ novels/<novel>/
 prompts/          translate.md (language-neutral core), context_update.md, review.md
   languages/      zh.md, ...   (source-language linguistic overlays; ko planned)
 scripts/          translate.py build_context.py consistency_check.py validate.py
-                  benchmark.py backends.py context.py
+                  benchmark.py backends.py context.py config.py
+                  build_reference_inventory.py plot_benchmark.py   (benchmark analysis helpers)
 benchmarks/       <id>/manifest.yaml (metadata only), README.md, results/   (public; no prose)
 .github/workflows-example/translate.yml   (CI stub; move into .github/workflows/ to enable)
 ```
@@ -100,6 +109,33 @@ benchmarks/       <id>/manifest.yaml (metadata only), README.md, results/   (pub
 Everything a novel needs to know about its languages lives in `novel.yaml` as `source_language` /
 `target_language`. The core loads whatever `*.yaml` a novel puts in `context/`, so genre- or
 language-specific files can be added without a code change. See [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Where your content lives
+
+A workspace (one novel or document set, laid out as above) is looked up under one or more
+**content roots**, searched in this order:
+
+1. the `WENMAI_CONTENT_ROOTS` environment variable (several paths separated by `:` on Linux/macOS,
+   `;` on Windows), which takes precedence;
+2. a `content_roots` list in `config.yaml`;
+3. otherwise the bundled `novels/` directory.
+
+```yaml
+# config.yaml
+content_roots:
+  - /path/to/my/workspaces
+```
+
+An external root lets your workspaces live in an independently managed (for example, private)
+directory. Wenmai only reads and writes there; nothing in it is published or committed to the
+Wenmai repository. Relative entries resolve against the repository root, and a workspace name found
+under more than one root is an error unless `content_roots_on_conflict: first` is set.
+
+Model handoff prompts embed document text. With the `claude_code` backend they are written to
+`claude_code.runs_dir` (default `.runs/` inside the checkout, git-ignored); for private content,
+set it to an absolute path outside the checkout. Wenmai warns when it would write prompts for
+external content inside the checkout. Details: [ARCHITECTURE.md](ARCHITECTURE.md) and
+`config.example.yaml`.
 
 ## Pipeline (v1 = three passes)
 
@@ -120,10 +156,13 @@ language. The call is behind one interface (`scripts/backends.py`), so the same 
 ways:
 
 - **`claude_code`** (default): no API key, no per-token billing. The script assembles the full
-  prompt into `.runs/<novel>/<chapter>/<pass>.prompt.md`, and you (via Claude Code) write the
-  answer to `<pass>.response.md`, then re-run to continue. Good for careful, reviewed translation.
+  prompt into `<runs_dir>/<novel>/<chapter>/<pass>.prompt.md` (`runs_dir` defaults to `.runs`), and
+  you (via Claude Code) write the answer to `<pass>.response.md`, then re-run to continue. Good for
+  careful, reviewed translation.
 - **`anthropic`**: calls the Claude API directly for unattended runs. Needs `ANTHROPIC_API_KEY`.
   This is what a future CI workflow would use.
+- **`claude_code_stateless`**: runs each call as a fresh, non-interactive `claude -p` process under
+  your Claude Code login, with tools disabled. Unattended like `anthropic`, but no API key.
 
 Pick the backend in `config.yaml` (copy from `config.example.yaml`) or with `--backend`.
 
@@ -132,7 +171,11 @@ Pick the backend in `config.yaml` (copy from `config.example.yaml`) or with `--b
 ```bash
 python -m pip install -r requirements.txt
 cp config.example.yaml config.yaml          # then edit if using the anthropic backend
+```
 
+**Translation workflow** (context retrieval, model-assisted translation, consistency checking):
+
+```bash
 # Translate one chapter (default claude_code backend = file handoff)
 python scripts/translate.py --novel sample-novel --chapter 1
 
@@ -143,7 +186,17 @@ python scripts/consistency_check.py --novel sample-novel
 python scripts/build_context.py --novel sample-novel --chapter 1
 ```
 
-`novels/sample-novel/` ships as a tiny invented demo so every step runs end to end.
+**Document consistency workflow** (deterministic checks against a canon you maintain; no
+translation, no model calls). For a workspace configured as in
+[Checking source documents](#checking-source-documents-no-translation):
+
+```bash
+python scripts/validate.py --novel <workspace> --require-first-seen
+python scripts/consistency_check.py --novel <workspace>               # whole workspace
+python scripts/consistency_check.py --novel <workspace> --chapter 3   # one chapter
+```
+
+`novels/sample-novel/` ships as a tiny invented demo so every translation step runs end to end.
 
 ### Adding your own novel
 
@@ -159,13 +212,92 @@ a real novel. **For the complete chapter-by-chapter workflow, including the huma
 used by Wenmai's full persistent-memory condition, see [GETTING_STARTED.md](GETTING_STARTED.md).**
 
 Everything under `novels/<your-novel>/` is git-ignored, so it stays on your machine. To version your
-own translations in a private fork, remove the `novels/*` lines from `.gitignore` (or add a
-`!novels/<your-novel>` exception).
+own translations, either keep the workspace in an external content root that is its own (private)
+repository (see [Where your content lives](#where-your-content-lives)), or, in a private fork, remove
+the `novels/*` lines from `.gitignore` (or add a `!novels/<your-novel>` exception).
 
 Translation is chapter-bounded: when translating chapter *i*, only durable canonical state and
 translation memory with `first_seen` **before** chapter *i* enter the prompt, so re-running an earlier
 chapter never pulls later-story state backward. Run `scripts/validate.py --require-first-seen` so every
 durable record carries the chapter it was learned in.
+
+## Checking source documents (no translation)
+
+The consistency checker can run directly on the documents in `source/`, without producing
+translations. This suits original writing (declare `en -> en` for an English manuscript) or any
+document set whose names and terms you want held to a canon you maintain in the usual `context/*.yaml`
+files. It is opt-in per workspace in `novel.yaml`:
+
+```yaml
+source_language: en
+target_language: en
+
+consistency:
+  documents: source       # translated (default) | source
+  first_seen: inclusive   # exclusive (default) | inclusive
+```
+
+A complete example workspace, using the normal [chapter file convention](#chapter-file-convention):
+
+```
+my-manuscript/
+  novel.yaml                  (as above)
+  source/ch00001_en.txt
+  context/characters.yaml
+```
+
+`source/ch00001_en.txt`:
+
+```text
+Ana Reyes unlocked the lighthouse door.
+By noon, Anna Reyes had counted every step to the lamp room.
+```
+
+`context/characters.yaml`:
+
+```yaml
+characters:
+  ana_reyes:
+    preferred: Ana Reyes
+    avoid: [Anna Reyes]
+    first_seen: ch00001
+```
+
+```bash
+python scripts/validate.py --novel my-manuscript --require-first-seen
+python scripts/consistency_check.py --novel my-manuscript              # whole workspace
+python scripts/consistency_check.py --novel my-manuscript --chapter 1  # one chapter
+```
+
+Both checks report the planted variant (exit status 1):
+
+```
+[consistency] 1 drift issue(s) in my-manuscript:
+  ch00001_en.txt:2  'Anna Reyes' -> use 'Ana Reyes'
+      By noon, Anna Reyes had counted every step to the lamp room.
+```
+
+**`first_seen` semantics.** A per-chapter check (`--chapter N`) applies only canon that exists at
+that point in reading order. With `exclusive` (the default, and the translation behaviour) a rule
+applies from the chapter *after* its `first_seen`; with `inclusive` it also applies in the chapter
+that established it, which is where a newly introduced name is most likely to be misspelled. In the
+example above, the exclusive setting reports nothing for `--chapter 1`. A whole-workspace check
+always uses the full current canon, in either mode.
+
+These settings affect only `consistency_check.py`. Context retrieval, `translate.py` (including its
+pass-3 check) and the benchmark keep their existing behaviour. Neither command calls a model.
+
+**Limitations.** The checker:
+
+- detects only the variants listed in canon `avoid` entries; it does not discover every misspelling
+  or near-miss on its own;
+- may flag deliberate variations, such as a character misnaming someone in dialogue;
+- does not evaluate plot, character knowledge, or timeline consistency;
+- reads only files that follow the chapter naming convention;
+- prints the matching line with each finding, so its output can contain document text.
+
+The context-extraction and editorial-review prompts are written for translation and have not yet
+been adapted into an original-writing workflow.
 
 ## Chapter file convention
 
@@ -193,8 +325,9 @@ python scripts/validate.py --novel sample-novel
 ```
 
 The suite covers language configuration and validation, context loading, translation continuity,
-consistency checking, the Claude Code handoff backend, and an end-to-end pipeline run on the bundled
-`sample-novel` using a fake backend (no API calls). It tests behaviour, not implementation details.
+consistency checking (including source-document mode), content-root resolution and path safety, the
+Claude Code handoff backend, and an end-to-end pipeline run on the bundled `sample-novel` using a
+fake backend (no API calls). It tests behaviour, not implementation details.
 
 ## Why GitHub
 
@@ -270,13 +403,16 @@ Details: [reference-analysis report](benchmarks/lotm/reference_analysis/lotm-opu
 
 ## Status: implemented vs planned
 
-Implemented in v1 (this repo, tested for `zh -> en`):
+Implemented in v1 (this repo; translation tested for `zh -> en`):
 - Three-pass flow: context retrieval, LLM translate + annotate, terminology-drift consistency check.
 - Per-novel context records, translation memory, and language-neutral core with a `zh` overlay.
-- Pluggable backends (`claude_code` handoff, `anthropic` API).
+- Pluggable backends (`claude_code` handoff, `anthropic` API, `claude_code_stateless` CLI).
 - Context-extraction pass that proposes reviewable additions (never auto-applied).
 - State validator (`scripts/validate.py`).
 - A/B/C benchmark harness (`scripts/benchmark.py`) with blinding and deterministic + human eval.
+- Configurable content roots, so workspaces can live outside the repository checkout.
+- Opt-in source-document consistency checking (deterministic, no model), including `en -> en`
+  original writing, with inclusive or exclusive `first_seen` bounding.
 
 Planned, NOT yet built:
 - A dedicated evaluation system (automated scoring beyond the benchmark's deterministic checks;
@@ -285,6 +421,8 @@ Planned, NOT yet built:
   `.github/workflows-example/` is a disabled stub, not an active pipeline).
 - Split semantic / literary-edit passes; knowledge-graph or embedding retrieval; automatic merging
   of accepted proposals; additional source languages.
+- An original-writing workflow beyond the deterministic checker (context extraction and editorial
+  review adapted for untranslated prose).
 
 ## Roadmap
 
