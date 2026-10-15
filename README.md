@@ -16,6 +16,15 @@ Rather than translating each chapter in isolation, Wenmai maintains persistent k
 story, including characters, aliases, relationships, factions, locations, terminology, abilities,
 historical events, recurring jokes, and established translation decisions.
 
+**Evidence so far.** A blind-scored, single-model benchmark on chapters 1 to 10 of a long Chinese
+webnovel (the corpus is held locally, not in this repo) compared three conditions: (A) each chapter
+translated on its own, (B) a rolling window of recent context, and (C) Wenmai's human-reviewed
+persistent memory. Persistent memory ranked first in 8 of the 9 informative chapters; rolling context
+led in chapter 9. Its strongest advantage was terminology consistency: established renderings stayed
+stable, while chapter-only kept drifting and rolling context fluctuated with its window. This is one
+run with ordinal scores, so the findings are directional, not statistically significant. Charts,
+method and per-chapter scores are in [Benchmarks](#benchmarks).
+
 Its goal is not simply to produce fluent English. It is to preserve the meaning carried between the
 lines.
 
@@ -26,7 +35,9 @@ providing concise contextual explanations where they genuinely matter.
 Chinese-to-English is Wenmai's first supported translation path. The underlying architecture is
 intended to support additional source languages over time, with language-specific linguistic
 intelligence separated from the shared systems for translation, context, memory, retrieval, and
-consistency. (A dedicated evaluation system is planned, not yet built; see Status below.)
+consistency. (The benchmark above and its evaluation procedures, blind scoring with human review
+plus deterministic checks, are implemented. A separate automated evaluation pipeline is planned but
+not built yet; see [Status](#status-implemented-vs-planned).)
 
 The aim is to combine the consistency of a maintained translation project with the contextual
 awareness of a human translator who has actually read the story.
